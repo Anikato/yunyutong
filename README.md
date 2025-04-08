@@ -21,7 +21,6 @@
     *   自动同步 DNS 记录到本地数据库。
 *   **界面:** 基于 Bootstrap 5 和 Bootswatch (Litera 主题) 的简洁响应式界面。
 
-*(未来可以考虑在此处添加应用截图)*
 
 ## 🚀 技术栈
 
@@ -73,7 +72,7 @@ pip install -r requirements.txt
 
 **推荐方式：创建 `.env` 文件**
 
-在项目根目录下创建一个名为 `.env` 的文件（**注意：** 此文件已在 `.gitignore` 中，不会上传到 Git），并填入以下内容：
+在项目根目录下创建一个名为 `.env` 的文件，并填入以下内容：
 
 ```env
 # Flask 配置
@@ -108,7 +107,7 @@ flask db upgrade
 
 ### 6. 运行应用 (使用 Waitress)
 
-我们推荐使用 Waitress (或其他 WSGI 服务器) 而不是 Flask 开发服务器。
+推荐使用 Waitress (或其他 WSGI 服务器) 而不是 Flask 开发服务器。
 
 ```bash
 # 监听在 8000 端口
