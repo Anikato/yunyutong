@@ -121,10 +121,3 @@ waitress-serve --host 0.0.0.0 --port 8000 app:app
 
 有关如何在生产环境服务器上部署此应用的详细说明（使用 Gunicorn, Nginx, Systemd），请参阅 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)。
 
-## 🤝 贡献 (可选)
-
-欢迎提出改进建议或报告问题！你可以通过 GitHub Issues 来进行。
-
-## 📄 许可证 (可选)
-
-*(如果选择，可以在此说明项目使用的许可证，例如 MIT License)*
