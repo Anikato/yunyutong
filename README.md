@@ -21,7 +21,6 @@
     *   自动同步 DNS 记录到本地数据库。
 *   **界面:** 基于 Bootstrap 5 和 Bootswatch (Litera 主题) 的简洁响应式界面。
 
-*(未来可以考虑在此处添加应用截图)*
 
 ## 🚀 技术栈
 
@@ -35,7 +34,7 @@
 
 ## 本地运行与设置
 
-按照以下步骤在你的本地机器上设置并运行"云域通"。
+按照以下步骤在你的本地机器上设置并运行“云域通”。
 
 ### 1. 克隆仓库
 
@@ -73,7 +72,7 @@ pip install -r requirements.txt
 
 **推荐方式：创建 `.env` 文件**
 
-在项目根目录下创建一个名为 `.env` 的文件（**注意：** 此文件已在 `.gitignore` 中，不会上传到 Git），并填入以下内容：
+在项目根目录下创建一个名为 `.env` 的文件，并填入以下内容：
 
 ```env
 # Flask 配置
@@ -108,7 +107,7 @@ flask db upgrade
 
 ### 6. 运行应用 (使用 Waitress)
 
-我们推荐使用 Waitress (或其他 WSGI 服务器) 而不是 Flask 开发服务器。
+推荐使用 Waitress (或其他 WSGI 服务器) 而不是 Flask 开发服务器。
 
 ```bash
 # 监听在 8000 端口
@@ -121,10 +120,3 @@ waitress-serve --host 0.0.0.0 --port 8000 app:app
 
 有关如何在生产环境服务器上部署此应用的详细说明（使用 Gunicorn, Nginx, Systemd），请参阅 [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)。
 
-## 🤝 贡献 (可选)
-
-欢迎提出改进建议或报告问题！你可以通过 GitHub Issues 来进行。
-
-## 📄 许可证 (可选)
-
-*(如果选择，可以在此说明项目使用的许可证，例如 MIT License)* 
