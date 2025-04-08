@@ -11,7 +11,7 @@ from flask_login import LoginManager, login_user, current_user, logout_user, log
 # 导入模型和表单
 from models import User, ApiToken, Domain, DnsRecord, db # 确保 db 也被导入或正确初始化
 from forms import RegistrationForm, LoginForm, ApiTokenForm, EditApiTokenForm, DnsRecordForm, ChangePasswordForm # 导入 EditApiTokenForm 和 ChangePasswordForm
-from utils import verify_api_token, get_zones_for_token, get_dns_records, create_dns_record, delete_dns_record, update_dns_record # 导入验证函数和 get_zones_for_token
+from utils import verify_api_token, get_zones_for_token, get_dns_records, create_dns_record, delete_dns_record, update_dns_record
 from datetime import datetime, timezone # 需要导入 datetime 处理 fetched_at
 from sqlalchemy.orm import selectinload # 需要导入 selectinload
 from sqlalchemy import func # 需要导入 func for case-insensitive sort
@@ -246,25 +246,49 @@ def delete_token(token_id):
         print(f"删除 Token 时数据库错误: {e}")
     return redirect(url_for('index'))
 
-@app.route('/token/<int:token_id>/edit', methods=['GET', 'POST'])
+@app.route('/edit_token/<int:token_id>', methods=['GET', 'POST'])
 @login_required
 def edit_token(token_id):
-    token = ApiToken.query.filter_by(id=token_id, user_id=current_user.id).first_or_404()
-    form = EditApiTokenForm(obj=token)
+    token_to_edit = ApiToken.query.get_or_404(token_id)
+    # 确保当前用户是这个 Token 的所有者
+    if token_to_edit.user_id != current_user.id:
+        flash('无权编辑此 Token。', 'danger')
+        return redirect(url_for('index'))
+
+    form = EditApiTokenForm(obj=token_to_edit) # 使用 obj 预填充表单
+
+    # 新增：解密 Token 以便在模板中使用
+    decrypted_token_value = ""
+    try:
+        # 使用模型自带的 get_token() 方法进行解密
+        decrypted_token_value = token_to_edit.get_token()
+        if decrypted_token_value is None:
+             # 如果 get_token() 返回 None，说明解密失败
+             raise ValueError("get_token() returned None, decryption failed.")
+    except Exception as e:
+        # 处理解密失败的情况
+        flash('无法解密此 Token 用于复制，请检查环境变量 ENCRYPTION_KEY 是否设置正确。', 'warning')
+        print(f"Error decrypting token {token_id} using get_token(): {e}") # 记录错误日志
+        decrypted_token_value = "" # 确保传递空字符串而不是 None
 
     if form.validate_on_submit():
-        try:
-            token.name = form.name.data
-            token.remarks = form.remarks.data
-            db.session.commit()
-            flash(f'API Token "{token.name}" 更新成功！', 'success')
-            return redirect(url_for('index'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'更新 API Token 时发生错误: {e}', 'danger')
-            print(f"更新 Token 时数据库错误: {e}")
+        # 更新 Token 名称和备注
+        token_to_edit.name = form.name.data
+        token_to_edit.remarks = form.remarks.data
+        db.session.commit()
+        flash('Token 信息已更新。', 'success')
+        return redirect(url_for('index'))
+    elif request.method == 'GET':
+        # 预填充表单 (如果上面 obj 方式无效，或者确保填充最新)
+        form.name.data = token_to_edit.name
+        form.remarks.data = token_to_edit.remarks
 
-    return render_template('edit_token.html', title='编辑 API Token', form=form, token=token)
+    # 将解密后的 Token 值传递给模板
+    return render_template('edit_token.html',
+                           title='编辑 API Token',
+                           form=form,
+                           token=token_to_edit, # 传递原始 token 对象
+                           decrypted_token=decrypted_token_value) # 传递解密后的值
 
 # --- DNS 记录路由 ---
 @app.route('/zone/<zone_id>/dns', methods=['GET', 'POST'])

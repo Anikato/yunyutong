@@ -1,7 +1,30 @@
 import requests
 import json # 需要导入 json 来序列化请求体
+# from cryptography.fernet import Fernet, InvalidToken # 不再需要 Fernet
+import os # os 仍可能被其他地方使用，暂时保留
 
 CLOUDFLARE_API_BASE_URL = "https://api.cloudflare.com/client/v4"
+
+KEY_FILE = 'secret.key' # 定义密钥文件名
+
+def load_key():
+    """
+    从 secret.key 文件加载密钥。如果文件不存在，则返回 None。
+    """
+    if not os.path.exists(KEY_FILE):
+        print(f"错误：密钥文件 '{KEY_FILE}' 未找到。")
+        return None
+    try:
+        with open(KEY_FILE, 'rb') as key_file:
+            key = key_file.read()
+        # 可选：可以加一个基本的 key 格式验证
+        if not key or len(key) < 40: # Fernet key is base64 encoded, usually > 40 bytes
+             print(f"错误：从 '{KEY_FILE}' 读取的密钥无效或为空。")
+             return None
+        return key
+    except Exception as e:
+        print(f"读取密钥文件 '{KEY_FILE}' 时出错: {e}")
+        return None
 
 def verify_api_token(token_string):
     """
@@ -343,3 +366,26 @@ def update_dns_record(token_string, zone_id, record_id, updated_data):
     except Exception as e:
         print(f"更新 DNS 记录时发生未知错误 (Record ID: {record_id}): {e}")
         return False, f"未知错误: {e}" 
+
+def decrypt_token(token_encrypted_bytes):
+    """
+    解密提供的字节串。
+    :param token_encrypted_bytes: 加密后的字节串 (通常来自数据库的 token_encrypted 字段)
+    :return: 解密后的字符串，如果解密失败则返回 None
+    """
+    if not token_encrypted_bytes:
+        return None
+    try:
+        key = load_key()
+        if not key:
+            print("错误：未能加载加密密钥，无法解密。") # 或者抛出异常
+            return None
+        f = Fernet(key)
+        decrypted_bytes = f.decrypt(token_encrypted_bytes)
+        return decrypted_bytes.decode('utf-8')
+    except InvalidToken:
+        print("错误：解密失败，Token无效或密钥不匹配。")
+        return None
+    except Exception as e:
+        print(f"解密过程中发生未知错误: {e}")
+        return None 

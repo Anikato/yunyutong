@@ -1,36 +1,92 @@
 {% extends "base.html" %}
-{% block title %}编辑 API Token{% endblock %}
+{% from "_formhelpers.html" import render_field %}
+
+{% block title %}编辑 API Token - 云域通{% endblock %}
 
 {% block content %}
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{ url_for('index') }}">主页</a></li>
-      <li class="breadcrumb-item active" aria-current="page">编辑 Token: {{ token.name }}</li>
-    </ol>
-  </nav>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6"> {# 调整列宽 #}
+        <div class="card shadow-sm border-light">
+            <div class="card-body p-4">
+                <h2 class="card-title mb-4">编辑 API Token</h2>
+                <form method="POST" action="{{ url_for('edit_token', token_id=token.id) }}" novalidate>
+                    {{ form.hidden_tag() }}
 
-  <h2>编辑 API Token</h2>
-  <p>你正在编辑 Token: <strong>{{ token.name }}</strong></p>
-  <p class="text-warning small">注意：你无法在此处修改 Token 字符串本身。如需更换 Token，请删除此条目并重新添加。</p>
+                    {{ render_field(form.name) }}
+                    {{ render_field(form.remarks, label_cols='col-md-3', input_cols='col-md-9') }} {# 备注字段可能需要调整列宽 #}
 
-  <div class="my-4 p-3 border rounded bg-light">
-      <form method="POST" action="{{ url_for('edit_token', token_id=token.id) }}" novalidate>
-          {{ form.hidden_tag() }} {# CSRF token #}
-          <div class="mb-3">
-              {{ form.name.label(class="form-label") }}
-              {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
-              {% for error in form.name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="mb-3">
-              {{ form.remarks.label(class="form-label") }}
-              {{ form.remarks(class="form-control" + (" is-invalid" if form.remarks.errors else ""), rows=4) }}
-              {% for error in form.remarks.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-          </div>
-          <div class="mb-3">
-              {{ form.submit(class="btn btn-primary me-2") }}
-              <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
-          </div>
-      </form>
-  </div>
+                    {# 新增：显示 Token (掩码) 和复制按钮 #}
+                    <div class="row mb-3 align-items-center">
+                        <label class="col-form-label col-md-3 text-md-end">API Token</label>
+                        <div class="col-md-9">
+                            <div class="input-group">
+                                <input type="text" class="form-control" value="••••••••••••••••••••••••••••••••••••••••" disabled readonly title="出于安全原因不直接显示，请使用复制按钮获取。">
+                                {# 将解密后的 Token 存储在按钮的 data-token 属性中 #}
+                                <button class="btn btn-outline-secondary" type="button" id="copy-token-btn"
+                                        data-token="{{ decrypted_token }}"
+                                        title="复制解密后的 Token 到剪贴板">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                                      <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                      <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                                    </svg>
+                                    复制
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
+                    <div class="d-grid gap-2 mt-4">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# 包含 base.html 中可能有的脚本 #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const copyBtn = document.getElementById('copy-token-btn');
+    if (copyBtn) {
+        const originalText = copyBtn.innerHTML; // 保存原始按钮内容
+
+        copyBtn.addEventListener('click', function() {
+            const tokenToCopy = this.dataset.token; // 从 data-token 获取 Token
+
+            if (!tokenToCopy) {
+                alert('无法获取 Token 值进行复制。');
+                return;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(tokenToCopy).then(() => {
+                    // 成功复制
+                    const icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16"><path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/></svg>';
+                    copyBtn.innerHTML = icon + ' 已复制!';
+                    copyBtn.classList.add('btn-success'); // 可选：临时变色
+                    copyBtn.classList.remove('btn-outline-secondary');
+
+                    // 2 秒后恢复按钮原始状态
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.classList.remove('btn-success');
+                        copyBtn.classList.add('btn-outline-secondary');
+                    }, 2000);
+                }).catch(err => {
+                    // 复制失败
+                    console.error('复制 Token 失败:', err);
+                    alert('复制失败，请手动复制或检查浏览器权限。');
+                });
+            } else {
+                // 浏览器不支持 Clipboard API
+                alert('你的浏览器不支持自动复制功能。');
+            }
+        });
+    }
+});
+</script>
 {% endblock %} 
