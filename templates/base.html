@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if title %}
+    <title>{{ title }} - 云域通</title>
+    {% else %}
+    <title>云域通</title>
+    {% endif %}
+    {# 链接到本地 Bootswatch "Litera" 主题 #}
+    <link href="{{ url_for('static', filename='libs/bootswatch/litera/bootstrap.min.css') }}" rel="stylesheet">
+    {# 链接到本地自定义 CSS 文件 #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <style>
+      /* Optional: Add minor adjustments here if needed, or in custom.css */
+      body { padding-top: 70px; } /* 稍微增加一点padding，为导航栏留出足够空间 */
+      .table-actions .btn { margin-right: 5px; } /* Space out action buttons */
+      .navbar { margin-bottom: 20px; } /* 给导航栏下方增加一些间距 */
+    </style>
+  </head>
+  <body>
+    {# 取消注释并启用导航栏 #}
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top shadow-sm"> {# 使用浅色主题, 固定顶部, 添加阴影 #}
+      <div class="container"> {# 将内容限制在容器内 #}
+        <a class="navbar-brand" href="{{ url_for('index') }}">
+          {# 你可以放一个 Logo 图片或者就用文字 #}
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-cloud-arrow-up-fill d-inline-block align-text-top me-2" viewBox="0 0 16 16">
+            <path d="M8 2a5.53 5.53 0 0 0-3.594 1.342c-.766.66-1.321 1.52-1.464 2.383C1.266 6.095 0 7.555 0 9.318 0 11.366 1.708 13 3.781 13h8.906C14.502 13 16 11.57 16 9.773c0-1.636-1.242-2.969-2.834-3.194C12.923 3.999 10.69 2 8 2zm2.354 5.146a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2z"/>
+          </svg>
+          云域通
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto"> {# ms-auto 将链接推到右侧 #}
+            {% if current_user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">主页</a></li>
+              {# 添加用户信息显示 #}
+               <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  你好, {{ current_user.username }}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
+                  {# 更新账户设置链接 #}
+                  <li><a class="dropdown-item" href="{{ url_for('change_password') }}">修改密码</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="{{ url_for('logout') }}">登出</a></li>
+                </ul>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">登录</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">注册</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container mt-4"> {# 主内容区域，使用 container 并添加上边距 #}
+        {# Flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              {# Map common categories to Bootstrap alert types #}
+              {% set alert_type = category if category in ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark'] else 'info' %}
+              <div class="alert alert-{{ alert_type }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {# Page content #}
+        {% block content %}{% endblock %}
+    </main>
+
+    {# Optional Footer
+    <footer class="py-4 mt-auto bg-light">
+        <div class="container px-5">
+            <div class="row align-items-center justify-content-between flex-column flex-sm-row">
+                <div class="col-auto"><div class="small m-0">Copyright &copy; 云域通 {{ now.year }}</div></div>
+                <div class="col-auto">
+                    <a class="link-secondary" href="#!">Privacy</a>
+                    <span class="mx-1">&middot;</span>
+                    <a class="link-secondary" href="#!">Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    #}
+
+    {# 链接到本地 Bootstrap JS Bundle #}
+    <script src="{{ url_for('static', filename='libs/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    {% block scripts %}{% endblock %} {# Allow adding page-specific scripts #}
+  </body>
+</html> 

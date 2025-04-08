@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('index') }}">主页</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('view_domains', token_id=token.id) }}">Token: {{ token.name }}</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('manage_dns_records', zone_id=domain.zone_id) }}">DNS: {{ domain.name }}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">编辑: {{ record.name }} ({{ record.type }})</li>
+    </ol>
+  </nav>
+
+  <h2>编辑 DNS 记录</h2>
+  <p>正在编辑 <strong>{{ record.name }}</strong> (类型: {{ record.type }}, ID: <code>{{ record.record_id }}</code>)</p>
+
+  <div class="my-4 p-3 border rounded bg-light">
+      <form method="POST" action="{{ url_for('edit_dns_record_route', record_id=record.record_id) }}" novalidate>
+          {{ form.hidden_tag() }} {# CSRF token #}
+          <div class="row g-3">
+              <div class="col-md-3">
+                  {# 直接显示文本类型，移除下拉框 #}
+                  <label class="form-label">记录类型</label>
+                  <p><strong>{{ record.type }}</strong></p>
+                  {# 保留隐藏字段以提交类型值 #}
+                  <input type="hidden" name="record_type" value="{{ record.type }}">
+              </div>
+              <div class="col-md-4">
+                  {{ form.name.label(class="form-label") }}
+                  {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                  {% for error in form.name.errors %} <div class="invalid-feedback">{{ error }}</div> {% endfor %}
+              </div>
+              <div class="col-md-5">
+                   {{ form.content.label(class="form-label") }}
+                   {{ form.content(class="form-control" + (" is-invalid" if form.content.errors else "")) }}
+                   {% for error in form.content.errors %} <div class="invalid-feedback">{{ error }}</div> {% endfor %}
+              </div>
+              <div class="col-md-3">
+                  {{ form.ttl.label(class="form-label") }}
+                  {{ form.ttl(class="form-select" + (" is-invalid" if form.ttl.errors else "")) }}
+                  {% for error in form.ttl.errors %} <div class="invalid-feedback">{{ error }}</div> {% endfor %}
+              </div>
+              <div class="col-md-2" id="priority-field" {% if form.record_type.data not in ['MX', 'SRV'] %}style="display: none;"{% endif %}>
+                   {{ form.priority.label(class="form-label") }}
+                   {{ form.priority(class="form-control" + (" is-invalid" if form.priority.errors else ""), type="number", readonly=True) }}
+                   {% for error in form.priority.errors %} <div class="invalid-feedback">{{ error }}</div> {% endfor %}
+              </div>
+              <div class="col-md-3 d-flex align-items-end">
+                  <div class="form-check form-switch mb-3">
+                      {{ form.proxied(class="form-check-input") }}
+                      {{ form.proxied.label(class="form-check-label") }}
+                  </div>
+              </div>
+               <div class="col-md-4 d-flex align-items-end">
+                  {{ form.submit(value="保存更改", class="btn btn-primary me-2") }}
+                  <a href="{{ url_for('manage_dns_records', zone_id=domain.zone_id) }}" class="btn btn-secondary">取消</a>
+              </div>
+          </div>
+      </form>
+       <script>
+         const recordTypeSelect = document.getElementById('record_type');
+         const priorityField = document.getElementById('priority-field');
+         function setPriorityVisibility() {
+             const currentType = document.querySelector('input[name="record_type"]').value || recordTypeSelect.value;
+             if (currentType === 'MX' || currentType === 'SRV') {
+                 priorityField.style.display = 'block';
+             } else {
+                 priorityField.style.display = 'none';
+             }
+         }
+         document.addEventListener('DOMContentLoaded', setPriorityVisibility);
+       </script>
+  </div>
+
+{% endblock %} 

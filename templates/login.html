@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_formhelpers.html" import render_field %} {# 确保你有这个宏或类似的 #}
+
+{% block title %}登录 - 云域通{% endblock %}
+
+{% block content %}
+{# 使用 Flexbox 和 Grid 来实现垂直居中和卡片布局 #}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;"> {# 调整最小高度以适应页面 #}
+    <div class="col-md-6 col-lg-5 col-xl-4"> {# 调整不同屏幕下的列宽 #}
+        <div class="card shadow-sm border-light"> {# 使用更柔和的边框 #}
+            <div class="card-body p-4 p-lg-5"> {# 在大屏幕上增加内边距 #}
+                <h2 class="card-title text-center mb-4">登录账户</h2>
+                <form method="POST" action="{{ url_for('login') }}" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-control form-control-lg" + (" is-invalid" if form.username.errors else "")) }}
+                        {% for error in form.username.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label") }}
+                        {{ form.password(class="form-control form-control-lg" + (" is-invalid" if form.password.errors else "")) }}
+                        {% for error in form.password.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3 form-check">
+                        {{ form.remember(class="form-check-input") }}
+                        {{ form.remember.label(class="form-check-label") }}
+                    </div>
+                    <div class="d-grid gap-2 mt-4"> {# 增加按钮上边距 #}
+                        {{ form.submit(class="btn btn-primary btn-lg") }} {# 使用稍大按钮 #}
+                    </div>
+                </form>
+                <hr class="my-4">
+                <p class="text-center small text-muted">
+                    还没有账户? <a href="{{ url_for('register') }}">点此注册</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

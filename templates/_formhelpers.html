@@ -1,0 +1,26 @@
+{% macro render_field(field, label_visible=true, label_cols='col-md-3', input_cols='col-md-9') -%}
+  {# 使用 Bootstrap row 和 col 来创建水平表单布局 #}
+  <div class="row mb-3 align-items-center"> {# 使用 row 并垂直居中 #}
+    {% if label_visible %}
+      {# 标签列: 使用 col-form-label 确保垂直对齐，并应用指定的列类 #}
+      {{ field.label(class="col-form-label " + label_cols + " text-md-end") }} {# 标签文本在 md 及以上屏幕右对齐 #}
+    {% else %}
+      {# 如果标签不可见，仍然需要一个空的列来占位，以保持对齐 #}
+      <div class="{{ label_cols }}"></div>
+    {% endif %}
+    {# 输入框列 #}
+    <div class="{{ input_cols }}">
+      {{ field(class="form-control" + (" is-invalid" if field.errors else "")) }}
+      {% if field.errors %}
+        <div class="invalid-feedback">
+          {% for error in field.errors %}
+            {{ error }}
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if field.description %}
+        <div class="form-text">{{ field.description }}</div>
+      {% endif %}
+    </div>
+  </div>
+{%- endmacro %} 

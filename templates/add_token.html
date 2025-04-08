@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}添加 API Token - 云域通{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <h2>添加新的 Cloudflare API Token</h2>
+    <p class="text-muted">请确保你添加的 Token 拥有读取区域 (Zone Read) 和编辑 DNS (DNS Edit) 的权限。</p>
+    <form method="POST" action="{{ url_for('add_token') }}">
+      {{ form.hidden_tag() }} <!-- CSRF token -->
+      <div class="mb-3">
+        {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+        {% if form.name.errors %}
+          <div class="invalid-feedback">
+            {% for error in form.name.errors %}
+              <span>{{ error }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        {{ form.token.label(class="form-label") }}
+        {{ form.token(class="form-control" + (" is-invalid" if form.token.errors else "")) }}
+         {% if form.token.errors %}
+          <div class="invalid-feedback">
+            {% for error in form.token.errors %}
+              <span>{{ error }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      <div class="mb-3">
+        {{ form.remarks.label(class="form-label") }}
+        {{ form.remarks(class="form-control" + (" is-invalid" if form.remarks.errors else ""), rows=3) }}
+         {% if form.remarks.errors %}
+          <div class="invalid-feedback">
+            {% for error in form.remarks.errors %}<span>{{ error }}</span>{% endfor %}
+          </div>
+         {% endif %}
+      </div>
+      <div class="mb-3">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}编辑 API Token{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('index') }}">主页</a></li>
+      <li class="breadcrumb-item active" aria-current="page">编辑 Token: {{ token.name }}</li>
+    </ol>
+  </nav>
+
+  <h2>编辑 API Token</h2>
+  <p>你正在编辑 Token: <strong>{{ token.name }}</strong></p>
+  <p class="text-warning small">注意：你无法在此处修改 Token 字符串本身。如需更换 Token，请删除此条目并重新添加。</p>
+
+  <div class="my-4 p-3 border rounded bg-light">
+      <form method="POST" action="{{ url_for('edit_token', token_id=token.id) }}" novalidate>
+          {{ form.hidden_tag() }} {# CSRF token #}
+          <div class="mb-3">
+              {{ form.name.label(class="form-label") }}
+              {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+              {% for error in form.name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+              {{ form.remarks.label(class="form-label") }}
+              {{ form.remarks(class="form-control" + (" is-invalid" if form.remarks.errors else ""), rows=4) }}
+              {% for error in form.remarks.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+              {{ form.submit(class="btn btn-primary me-2") }}
+              <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+          </div>
+      </form>
+  </div>
+
+{% endblock %} 
