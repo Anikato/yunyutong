@@ -261,8 +261,17 @@ setup_permissions() {
     chown -R "$APP_USER:$APP_USER" "$APP_DIR"
     
     print_info "设置目录权限..."
+    # 设置目录权限为 755
     find "$APP_DIR" -type d -exec chmod 755 {} \;
-    find "$APP_DIR" -type f -exec chmod 644 {} \;
+    
+    # 设置普通文件权限为 644，但排除 venv/bin 目录
+    find "$APP_DIR" -type f ! -path "*/venv/bin/*" -exec chmod 644 {} \;
+    
+    # venv/bin 下的文件需要执行权限
+    if [ -d "$VENV_DIR/bin" ]; then
+        print_info "设置虚拟环境可执行文件权限..."
+        chmod 755 "$VENV_DIR/bin/"* 2>/dev/null || true
+    fi
     
     # 脚本文件需要执行权限
     chmod +x "$APP_DIR/deploy.sh" 2>/dev/null || true
