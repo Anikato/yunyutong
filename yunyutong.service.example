@@ -1,0 +1,72 @@
+# ============================================
+# 云域通 (YunYuTong) Systemd 服务文件示例
+# ============================================
+# 
+# 安装方法:
+#   1. 修改下面的配置项 (用户名、路径等)
+#   2. 复制到 systemd 目录:
+#      sudo cp yunyutong.service.example /etc/systemd/system/yunyutong.service
+#   3. 重新加载 systemd:
+#      sudo systemctl daemon-reload
+#   4. 启动并启用服务:
+#      sudo systemctl enable --now yunyutong
+#
+# ============================================
+
+[Unit]
+Description=YunYuTong DNS Management System
+Documentation=https://github.com/Anikato/yunyutong
+After=network.target
+
+[Service]
+Type=notify
+
+# ========== 请修改以下配置 ==========
+
+# 运行用户和组 (改为你的用户名)
+User=YOUR_USERNAME
+Group=YOUR_USERNAME
+
+# 应用目录 (改为实际安装路径)
+WorkingDirectory=/home/YOUR_USERNAME/yunyutong
+
+# 环境变量路径
+Environment="PATH=/home/YOUR_USERNAME/yunyutong/venv/bin"
+EnvironmentFile=/home/YOUR_USERNAME/yunyutong/.env
+
+# ========== Gunicorn 启动命令 ==========
+
+# 使用 Unix Socket (推荐，配合 Nginx)
+ExecStart=/home/YOUR_USERNAME/yunyutong/venv/bin/gunicorn \
+    --workers 3 \
+    --worker-class sync \
+    --bind unix:/home/YOUR_USERNAME/yunyutong/yunyutong.sock \
+    --access-logfile /home/YOUR_USERNAME/yunyutong/logs/access.log \
+    --error-logfile /home/YOUR_USERNAME/yunyutong/logs/error.log \
+    --capture-output \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    -m 007 \
+    run:app
+
+# 或者: 使用 TCP 端口 (直接访问，不推荐生产使用)
+# ExecStart=/home/YOUR_USERNAME/yunyutong/venv/bin/gunicorn \
+#     --workers 3 \
+#     --bind 127.0.0.1:8000 \
+#     --access-logfile /home/YOUR_USERNAME/yunyutong/logs/access.log \
+#     --error-logfile /home/YOUR_USERNAME/yunyutong/logs/error.log \
+#     run:app
+
+# ========== 重启策略 ==========
+Restart=always
+RestartSec=5
+
+# ========== 安全限制 ==========
+NoNewPrivileges=true
+PrivateTmp=true
+
+# 资源限制
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

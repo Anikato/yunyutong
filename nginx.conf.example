@@ -1,0 +1,153 @@
+# ============================================
+# 云域通 (YunYuTong) Nginx 反向代理配置示例
+# ============================================
+#
+# 安装方法:
+#   1. 修改下面的配置 (域名、路径等)
+#   2. 复制到 Nginx 配置目录:
+#      sudo cp nginx.conf.example /etc/nginx/sites-available/yunyutong
+#   3. 创建符号链接启用站点:
+#      sudo ln -s /etc/nginx/sites-available/yunyutong /etc/nginx/sites-enabled/
+#   4. 测试配置:
+#      sudo nginx -t
+#   5. 重启 Nginx:
+#      sudo systemctl reload nginx
+#
+# ============================================
+
+# ==========================================
+# 方案 1: 使用 Unix Socket (推荐)
+# ==========================================
+
+upstream yunyutong {
+    # Unix Socket 连接 (与 systemd 服务配置对应)
+    server unix:/home/YOUR_USERNAME/yunyutong/yunyutong.sock fail_timeout=0;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    
+    # ========== 请修改域名 ==========
+    server_name dns.example.com;
+    
+    # 重定向 HTTP 到 HTTPS (配置 SSL 后取消注释)
+    # return 301 https://$server_name$request_uri;
+    
+    # 日志
+    access_log /var/log/nginx/yunyutong_access.log;
+    error_log /var/log/nginx/yunyutong_error.log;
+    
+    # 客户端上传大小限制
+    client_max_body_size 10M;
+    
+    # 静态文件 (直接由 Nginx 处理，提高性能)
+    location /static/ {
+        alias /home/YOUR_USERNAME/yunyutong/app/static/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        
+        # 开启 gzip 压缩
+        gzip_static on;
+    }
+    
+    # 动态请求转发到 Gunicorn
+    location / {
+        proxy_pass http://yunyutong;
+        proxy_redirect off;
+        
+        # 传递客户端信息
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket 支持 (如果需要)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+# ==========================================
+# 方案 2: HTTPS 配置 (推荐生产环境)
+# ==========================================
+# 
+# 使用 Certbot 自动配置 SSL:
+#   sudo apt install certbot python3-certbot-nginx
+#   sudo certbot --nginx -d dns.example.com
+#
+# 或者手动配置:
+
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     
+#     server_name dns.example.com;
+#     
+#     # SSL 证书 (Let's Encrypt)
+#     ssl_certificate /etc/letsencrypt/live/dns.example.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/dns.example.com/privkey.pem;
+#     
+#     # SSL 安全配置
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     ssl_prefer_server_ciphers off;
+#     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+#     
+#     # HSTS
+#     add_header Strict-Transport-Security "max-age=63072000" always;
+#     
+#     # 其他配置同上...
+#     location /static/ {
+#         alias /home/YOUR_USERNAME/yunyutong/app/static/;
+#         expires 30d;
+#     }
+#     
+#     location / {
+#         proxy_pass http://yunyutong;
+#         proxy_set_header Host $http_host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#     }
+# }
+
+# ==========================================
+# 方案 3: 使用 TCP 端口 (简单配置)
+# ==========================================
+# 
+# 如果 Gunicorn 监听 TCP 端口而非 Unix Socket:
+#
+# upstream yunyutong {
+#     server 127.0.0.1:8000;
+# }
+#
+# 其余配置相同
+
+# ==========================================
+# 方案 4: 子路径部署 (如 /dns/)
+# ==========================================
+#
+# server {
+#     listen 80;
+#     server_name example.com;
+#     
+#     location /dns/ {
+#         proxy_pass http://yunyutong/;
+#         proxy_set_header Host $http_host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_set_header X-Script-Name /dns;
+#     }
+#     
+#     location /dns/static/ {
+#         alias /home/YOUR_USERNAME/yunyutong/app/static/;
+#         expires 30d;
+#     }
+# }
