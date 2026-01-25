@@ -30,6 +30,9 @@ def create_app(config_class=Config):
     
     from app.routes.dns import bp as dns_bp
     app.register_blueprint(dns_bp)
+    
+    from app.routes.api import bp as api_bp
+    app.register_blueprint(api_bp)
 
     # 配置日志
     if not app.debug and not app.testing:

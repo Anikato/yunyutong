@@ -69,9 +69,30 @@ def view_domains(token_id):
     except Exception as e:
         flash(f'获取域名列表时发生错误: {str(e)}', 'danger')
 
-    domains_in_db = Domain.query.filter_by(api_token_id=token.id).order_by(Domain.name).all()
+    # 获取排序参数
+    sort_by = request.args.get('sort', 'custom')
+    
+    query = Domain.query.filter_by(api_token_id=token.id)
+    
+    if sort_by == 'name':
+        query = query.order_by(Domain.name.asc())
+    elif sort_by == 'name_desc':
+        query = query.order_by(Domain.name.desc())
+    elif sort_by == 'status':
+        query = query.order_by(Domain.status.asc(), Domain.name.asc())
+    elif sort_by == 'date':
+        query = query.order_by(Domain.fetched_at.desc())
+    else:
+        # 自定义排序：sort_order 优先，然后按域名名称
+        query = query.order_by(Domain.sort_order.asc(), Domain.name.asc())
+    
+    domains_in_db = query.all()
 
-    return render_template('domains.html', title=f'域名列表 - {token.name}', token=token, domains=domains_in_db)
+    return render_template('domains.html', 
+                          title=f'域名列表 - {token.name}', 
+                          token=token, 
+                          domains=domains_in_db,
+                          current_sort=sort_by)
 
 
 @bp.route('/zone/<zone_id>/dns', methods=['GET', 'POST'])

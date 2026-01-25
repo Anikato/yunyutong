@@ -67,12 +67,42 @@
             </svg>
             我的凭证
           </h5>
-          <span class="badge bg-secondary">{{ tokens | length }} 个</span>
+          <div class="d-flex align-items-center gap-2">
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                  <path d="M3.5 2.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 11.293V2.5zm3.5 1a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1h-1z"/>
+                </svg>
+                排序
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item {% if current_sort == 'custom' %}active{% endif %}" href="?sort=custom">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-2" viewBox="0 0 16 16">
+                    <path d="M7.646.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 1.707V5.5a.5.5 0 0 1-1 0V1.707L6.354 2.854a.5.5 0 1 1-.708-.708l2-2zM8 10a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 14.293V10.5A.5.5 0 0 1 8 10z"/>
+                  </svg>
+                  自定义排序
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item {% if current_sort == 'name' %}active{% endif %}" href="?sort=name">名称 A→Z</a></li>
+                <li><a class="dropdown-item {% if current_sort == 'name_desc' %}active{% endif %}" href="?sort=name_desc">名称 Z→A</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item {% if current_sort == 'provider' %}active{% endif %}" href="?sort=provider">按服务商</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item {% if current_sort == 'date' %}active{% endif %}" href="?sort=date">添加时间 (新→旧)</a></li>
+                <li><a class="dropdown-item {% if current_sort == 'date_asc' %}active{% endif %}" href="?sort=date_asc">添加时间 (旧→新)</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item {% if current_sort == 'domains' %}active{% endif %}" href="?sort=domains">域名数量 (多→少)</a></li>
+                <li><a class="dropdown-item {% if current_sort == 'domains_asc' %}active{% endif %}" href="?sort=domains_asc">域名数量 (少→多)</a></li>
+              </ul>
+            </div>
+            <span class="badge bg-secondary">{{ tokens | length }} 个</span>
+          </div>
         </div>
         <div class="table-responsive">
           <table class="table mb-0">
             <thead>
               <tr>
+                {% if current_sort == 'custom' %}<th style="width: 40px;"></th>{% endif %}
                 <th>名称</th>
                 <th>服务商</th>
                 <th>域名</th>
@@ -81,9 +111,16 @@
                 <th style="width: 200px;">操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="tokens-sortable">
               {% for token in tokens %}
-              <tr class="token-row">
+              <tr class="token-row" data-id="{{ token.id }}">
+                {% if current_sort == 'custom' %}
+                <td class="drag-handle" style="cursor: grab; text-align: center; vertical-align: middle;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-muted" viewBox="0 0 16 16">
+                    <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                  </svg>
+                </td>
+                {% endif %}
                 <td>
                   <div class="token-name">{{ token.name }}</div>
                   {% if token.remarks %}
@@ -259,4 +296,85 @@
       </div>
     </div>
   {% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if current_user.is_authenticated and tokens and current_sort == 'custom' %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const sortableEl = document.getElementById('tokens-sortable');
+  if (sortableEl) {
+    new Sortable(sortableEl, {
+      animation: 150,
+      handle: '.drag-handle',
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        // 获取新的排序顺序
+        const rows = sortableEl.querySelectorAll('tr[data-id]');
+        const order = Array.from(rows).map(row => parseInt(row.dataset.id));
+        
+        // 发送到服务器保存
+        fetch('/api/tokens/reorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ order: order })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // 可选：显示成功提示
+            showToast('排序已保存', 'success');
+          } else {
+            showToast('保存排序失败: ' + data.error, 'danger');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          showToast('保存排序失败', 'danger');
+        });
+      }
+    });
+  }
+  
+  // 简单的 Toast 提示
+  function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} position-fixed`;
+    toast.style.cssText = 'top: 80px; right: 20px; z-index: 9999; min-width: 200px; animation: fadeIn 0.3s;';
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.3s';
+      setTimeout(() => toast.remove(), 300);
+    }, 2000);
+  }
+});
+</script>
+<style>
+  .sortable-ghost {
+    opacity: 0.4;
+    background: var(--primary-gradient) !important;
+  }
+  .sortable-chosen {
+    background: var(--bg-card);
+  }
+  .sortable-drag {
+    background: var(--bg-card);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .drag-handle:hover {
+    color: var(--text-primary) !important;
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+</style>
+{% endif %}
 {% endblock %}

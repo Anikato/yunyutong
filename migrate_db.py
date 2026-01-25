@@ -76,6 +76,14 @@ def migrate():
         if not check_column_exists(cursor, 'dns_record', 'priority'):
             migrations_needed.append('dns_record_priority')
         
+        # 检查是否需要添加 api_token.sort_order 字段
+        if not check_column_exists(cursor, 'api_token', 'sort_order'):
+            migrations_needed.append('api_token_sort_order')
+        
+        # 检查是否需要添加 domain.sort_order 字段
+        if not check_column_exists(cursor, 'domain', 'sort_order'):
+            migrations_needed.append('domain_sort_order')
+        
         if not migrations_needed:
             print("✅ 数据库已是最新版本，无需迁移")
             return
@@ -117,6 +125,24 @@ def migrate():
                 ADD COLUMN priority INTEGER
             """)
             print("   ✅ dns_record.priority 字段已添加")
+        
+        # 添加 api_token.sort_order 字段
+        if 'api_token_sort_order' in migrations_needed:
+            print("\n📦 添加 api_token.sort_order 字段...")
+            cursor.execute("""
+                ALTER TABLE api_token 
+                ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0
+            """)
+            print("   ✅ api_token.sort_order 字段已添加")
+        
+        # 添加 domain.sort_order 字段
+        if 'domain_sort_order' in migrations_needed:
+            print("\n📦 添加 domain.sort_order 字段...")
+            cursor.execute("""
+                ALTER TABLE domain 
+                ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0
+            """)
+            print("   ✅ domain.sort_order 字段已添加")
         
         # 提交更改
         conn.commit()

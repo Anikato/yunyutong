@@ -71,6 +71,10 @@ class ApiToken(db.Model):
     remarks = db.Column(db.Text, nullable=True)
     added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # 排序字段 (数字越小越靠前，0 表示使用默认排序)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    
     domains = db.relationship('Domain', backref='api_token', lazy=True, cascade="all, delete-orphan")
 
     def set_credentials(self, credentials: dict):
@@ -149,6 +153,10 @@ class Domain(db.Model):
     status = db.Column(db.String(50), nullable=True)
     fetched_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     api_token_id = db.Column(db.Integer, db.ForeignKey('api_token.id'), nullable=False)
+    
+    # 排序字段 (数字越小越靠前，0 表示使用默认排序)
+    sort_order = db.Column(db.Integer, default=0, nullable=False)
+    
     dns_records = db.relationship('DnsRecord', backref='domain', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
