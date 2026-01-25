@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}添加 DNS 服务商凭证 - 云域通{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">主页</a></li>
+        <li class="breadcrumb-item active">添加凭证</li>
+      </ol>
+    </nav>
+    
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="me-2" viewBox="0 0 16 16">
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          添加 DNS 服务商凭证
+        </h5>
+      </div>
+      <div class="card-body p-4">
+        <p class="text-muted mb-4">选择你的 DNS 服务商并填写相应的凭证信息。凭证将被安全加密存储。</p>
+        
+        <form method="POST" action="{{ url_for('token.add_token') }}" id="add-token-form">
+          {{ form.hidden_tag() }}
+          
+          <!-- 名称 -->
+          <div class="mb-4">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+            <div class="form-text">给这个凭证起一个名字，方便识别</div>
+            {% if form.name.errors %}
+              <div class="invalid-feedback">
+                {% for error in form.name.errors %}<span>{{ error }}</span>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- DNS 服务商选择 -->
+          <div class="mb-4">
+            {{ form.provider_type.label(class="form-label") }}
+            {{ form.provider_type(class="form-select" + (" is-invalid" if form.provider_type.errors else ""), id="provider-select") }}
+            {% if form.provider_type.errors %}
+              <div class="invalid-feedback">
+                {% for error in form.provider_type.errors %}<span>{{ error }}</span>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <!-- Cloudflare 凭证 -->
+          <div id="cloudflare-fields" class="provider-fields">
+            <div class="card mb-4" style="border-left: 4px solid #f38020;">
+              <div class="card-body">
+                <h6 class="card-title d-flex align-items-center mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#f38020" class="me-2" viewBox="0 0 16 16">
+                    <path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+                  </svg>
+                  Cloudflare 凭证
+                </h6>
+                <div class="mb-3">
+                  {{ form.api_token.label(class="form-label") }}
+                  {{ form.api_token(class="form-control" + (" is-invalid" if form.api_token.errors else ""), rows=3) }}
+                  <div class="form-text">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                      <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                    </svg>
+                    在 Cloudflare 控制台 → My Profile → API Tokens 中创建。确保 Token 有 Zone Read 和 DNS Edit 权限。
+                  </div>
+                  {% if form.api_token.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in form.api_token.errors %}<span>{{ error }}</span>{% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 阿里云凭证 -->
+          <div id="aliyun-fields" class="provider-fields" style="display: none;">
+            <div class="card mb-4" style="border-left: 4px solid #ff6a00;">
+              <div class="card-body">
+                <h6 class="card-title d-flex align-items-center mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#ff6a00" class="me-2" viewBox="0 0 16 16">
+                    <path d="M7 8a3.5 3.5 0 0 1 3.5 3.555.5.5 0 0 0 .625.492A1.503 1.503 0 0 1 13 13.5a1.5 1.5 0 0 1-1.5 1.5H3a2 2 0 1 1 .1-3.998.5.5 0 0 0 .509-.375A3.502 3.502 0 0 1 7 8z"/>
+                  </svg>
+                  阿里云凭证
+                </h6>
+                <div class="mb-3">
+                  {{ form.access_key_id.label(class="form-label") }}
+                  {{ form.access_key_id(class="form-control" + (" is-invalid" if form.access_key_id.errors else "")) }}
+                  <div class="form-text">在阿里云控制台 → AccessKey 管理中获取</div>
+                  {% if form.access_key_id.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in form.access_key_id.errors %}<span>{{ error }}</span>{% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                <div class="mb-3">
+                  {{ form.access_key_secret.label(class="form-label") }}
+                  {{ form.access_key_secret(class="form-control" + (" is-invalid" if form.access_key_secret.errors else "")) }}
+                  <div class="form-text">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1 text-warning" viewBox="0 0 16 16">
+                      <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
+                      <path d="M8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                    </svg>
+                    请妥善保管，不要泄露给他人
+                  </div>
+                  {% if form.access_key_secret.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in form.access_key_secret.errors %}<span>{{ error }}</span>{% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 备注 -->
+          <div class="mb-4">
+            {{ form.remarks.label(class="form-label") }}
+            {{ form.remarks(class="form-control" + (" is-invalid" if form.remarks.errors else ""), rows=2) }}
+            {% if form.remarks.errors %}
+              <div class="invalid-feedback">
+                {% for error in form.remarks.errors %}<span>{{ error }}</span>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+          
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">取消</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('provider-select');
+    const allFields = document.querySelectorAll('.provider-fields');
+    
+    function showProviderFields() {
+        const selected = providerSelect.value;
+        
+        // 隐藏所有
+        allFields.forEach(function(el) {
+            el.style.display = 'none';
+        });
+        
+        // 显示选中的
+        const targetFields = document.getElementById(selected + '-fields');
+        if (targetFields) {
+            targetFields.style.display = 'block';
+        }
+    }
+    
+    // 初始显示
+    showProviderFields();
+    
+    // 切换时更新
+    providerSelect.addEventListener('change', showProviderFields);
+});
+</script>
+{% endblock %}

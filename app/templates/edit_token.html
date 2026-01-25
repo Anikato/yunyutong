@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_formhelpers.html" import render_field %}
+
+{% block title %}编辑凭证 - 云域通{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-light">
+            <div class="card-body p-4">
+                <h2 class="card-title mb-4">编辑凭证</h2>
+                
+                {# 显示 Provider 类型 #}
+                <div class="alert alert-light mb-4">
+                    <div class="d-flex align-items-center">
+                        <span class="me-2"><strong>服务商:</strong></span>
+                        {% if token.provider_type == 'cloudflare' %}
+                            <span class="badge bg-info">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-cloud me-1" viewBox="0 0 16 16">
+                                    <path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+                                </svg>
+                                Cloudflare
+                            </span>
+                        {% elif token.provider_type == 'aliyun' %}
+                            <span class="badge bg-warning text-dark">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-cloud-sun me-1" viewBox="0 0 16 16">
+                                    <path d="M7 8a3.5 3.5 0 0 1 3.5 3.555.5.5 0 0 0 .625.492A1.503 1.503 0 0 1 13 13.5a1.5 1.5 0 0 1-1.5 1.5H3a2 2 0 1 1 .1-3.998.5.5 0 0 0 .509-.375A3.502 3.502 0 0 1 7 8z"/>
+                                </svg>
+                                阿里云
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ token.provider_type }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <form method="POST" action="{{ url_for('token.edit_token', token_id=token.id) }}" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    {{ render_field(form.name) }}
+                    {{ render_field(form.remarks, label_cols='col-md-3', input_cols='col-md-9') }}
+
+                    {# 显示凭证信息（部分隐藏） #}
+                    <div class="mb-3">
+                        <label class="form-label"><strong>凭证信息</strong></label>
+                        <div class="card bg-light">
+                            <div class="card-body py-2">
+                                {% for key, value in masked_credentials.items() %}
+                                <div class="d-flex justify-content-between align-items-center {% if not loop.last %}mb-2{% endif %}">
+                                    <span class="text-muted">{{ key }}:</span>
+                                    <code>{{ value }}</code>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="form-text">出于安全原因，凭证仅部分显示。如需更新凭证，请删除后重新添加。</div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
