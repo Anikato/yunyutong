@@ -23,6 +23,7 @@ VENV_DIR="${APP_DIR}/venv"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 ENV_FILE="${APP_DIR}/.env"
 LOG_DIR="${APP_DIR}/logs"
+APP_PORT="8000"  # 应用监听端口
 
 # 打印带颜色的消息
 print_info() {
@@ -213,7 +214,10 @@ init_database() {
     else
         print_info "创建数据库..."
         cd "$APP_DIR"
-        "$VENV_DIR/bin/python3" << 'PYEOF'
+        
+        # 以目标用户身份运行，避免权限问题
+        if [ "$EUID" -eq 0 ] && [ -n "$APP_USER" ] && [ "$APP_USER" != "root" ]; then
+            sudo -u "$APP_USER" "$VENV_DIR/bin/python3" << 'PYEOF'
 from app import create_app
 from app.extensions import db
 
@@ -222,9 +226,29 @@ with app.app_context():
     db.create_all()
     print("数据库表已创建")
 PYEOF
+        else
+            "$VENV_DIR/bin/python3" << 'PYEOF'
+from app import create_app
+from app.extensions import db
+
+app = create_app()
+with app.app_context():
+    db.create_all()
+    print("数据库表已创建")
+PYEOF
+        fi
+        
+        if [ $? -ne 0 ]; then
+            print_error "数据库初始化失败"
+            exit 1
+        fi
     fi
     
-    chown "$APP_USER:$APP_USER" "$DB_FILE" 2>/dev/null || true
+    # 确保数据库文件权限正确
+    if [ -f "$DB_FILE" ]; then
+        chown "$APP_USER:$APP_USER" "$DB_FILE" 2>/dev/null || true
+        chmod 644 "$DB_FILE" 2>/dev/null || true
+    fi
     
     print_success "数据库配置完成"
 }
@@ -271,7 +295,7 @@ Documentation=https://github.com/Anikato/yunyutong
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 User=${APP_USER}
 Group=${APP_USER}
 WorkingDirectory=${APP_DIR}
@@ -280,17 +304,16 @@ WorkingDirectory=${APP_DIR}
 Environment="PATH=${VENV_DIR}/bin"
 EnvironmentFile=${ENV_FILE}
 
-# Gunicorn 启动命令
+# Gunicorn 启动命令 (绑定到本地端口)
 ExecStart=${VENV_DIR}/bin/gunicorn \\
     --workers ${WORKERS} \\
     --worker-class sync \\
-    --bind unix:${APP_DIR}/${APP_NAME}.sock \\
+    --bind 127.0.0.1:${APP_PORT} \\
     --access-logfile ${LOG_DIR}/access.log \\
     --error-logfile ${LOG_DIR}/error.log \\
     --capture-output \\
     --timeout 120 \\
     --graceful-timeout 30 \\
-    -m 007 \\
     run:app
 
 # 重启策略
@@ -349,7 +372,7 @@ show_info() {
     echo -e "虚拟环境:    ${CYAN}${VENV_DIR}${NC}"
     echo -e "配置文件:    ${CYAN}${ENV_FILE}${NC}"
     echo -e "日志目录:    ${CYAN}${LOG_DIR}${NC}"
-    echo -e "Socket:      ${CYAN}${APP_DIR}/${APP_NAME}.sock${NC}"
+    echo -e "监听地址:    ${CYAN}127.0.0.1:${APP_PORT}${NC}"
     echo ""
     echo "========== 常用命令 =========="
     echo ""
@@ -370,16 +393,22 @@ show_info() {
     print_warning "首次使用请配置 Nginx 后访问 http://your-domain/ 注册账号"
 }
 
-# 仅安装依赖模式
+# 仅安装依赖模式 (用于开发环境)
 install_only() {
-    print_header "仅安装依赖模式"
+    print_header "仅安装依赖模式 (开发环境)"
     setup_venv
     install_python_deps
+    setup_env
     setup_logs
+    init_database
     print_success "依赖安装完成"
     echo ""
+    echo "========== 开发环境就绪 =========="
+    echo ""
     echo "激活虚拟环境: source ${VENV_DIR}/bin/activate"
-    echo "运行开发服务器: python3 run.py"
+    echo "运行开发服务器: flask run --debug"
+    echo ""
+    echo "或者直接运行: ${VENV_DIR}/bin/flask run --debug"
 }
 
 # 显示帮助
@@ -390,16 +419,71 @@ show_help() {
     echo ""
     echo "选项:"
     echo "  --help, -h       显示此帮助信息"
-    echo "  --install-only   仅安装依赖，不配置 systemd 服务"
+    echo "  --install-only   仅安装依赖 (用于开发环境)"
     echo "  --update         更新依赖并重启服务"
+    echo "  --restart        重启服务"
+    echo "  --status         查看服务状态"
     echo "  --uninstall      卸载服务 (保留数据)"
     echo ""
-    echo "无参数运行将执行完整部署"
+    echo "无参数运行将执行完整生产部署"
+}
+
+# 重启服务
+restart_service() {
+    print_header "重启服务"
+    
+    if ! systemctl is-enabled --quiet "$APP_NAME" 2>/dev/null; then
+        print_error "服务未安装或未启用"
+        exit 1
+    fi
+    
+    print_info "重启 $APP_NAME 服务..."
+    systemctl restart "$APP_NAME"
+    
+    sleep 2
+    
+    if systemctl is-active --quiet "$APP_NAME"; then
+        print_success "服务重启成功"
+        systemctl status "$APP_NAME" --no-pager
+    else
+        print_error "服务重启失败"
+        journalctl -u "$APP_NAME" -n 20 --no-pager
+        exit 1
+    fi
+}
+
+# 查看服务状态
+show_status() {
+    print_header "服务状态"
+    
+    if ! systemctl is-enabled --quiet "$APP_NAME" 2>/dev/null; then
+        print_warning "服务未安装"
+        exit 0
+    fi
+    
+    systemctl status "$APP_NAME" --no-pager
+    echo ""
+    print_info "最近日志:"
+    journalctl -u "$APP_NAME" -n 10 --no-pager
 }
 
 # 更新模式
 update() {
     print_header "更新应用"
+    
+    # 检查虚拟环境是否存在
+    if [ ! -d "$VENV_DIR" ]; then
+        print_error "虚拟环境不存在: $VENV_DIR"
+        print_info "请先运行完整部署: sudo bash $0"
+        exit 1
+    fi
+    
+    # 检查服务是否存在
+    if [ ! -f "$SERVICE_FILE" ]; then
+        print_error "服务文件不存在: $SERVICE_FILE"
+        print_info "请先运行完整部署: sudo bash $0"
+        exit 1
+    fi
     
     print_info "更新 Python 依赖..."
     "$VENV_DIR/bin/pip3" install -r "$APP_DIR/requirements.txt" -q --upgrade
@@ -407,7 +491,15 @@ update() {
     print_info "重启服务..."
     systemctl restart "$APP_NAME"
     
-    print_success "更新完成"
+    sleep 2
+    
+    if systemctl is-active --quiet "$APP_NAME"; then
+        print_success "更新完成，服务已重启"
+    else
+        print_error "服务重启失败，请检查日志:"
+        echo "  journalctl -u $APP_NAME -n 50"
+        exit 1
+    fi
 }
 
 # 卸载服务
@@ -448,20 +540,21 @@ main() {
             exit 0
             ;;
         --install-only)
-            setup_venv
-            install_python_deps
-            setup_env
-            setup_logs
-            init_database
-            print_success "依赖安装完成"
-            echo ""
-            echo "激活虚拟环境: source ${VENV_DIR}/bin/activate"
-            echo "运行开发服务器: python3 run.py"
+            install_only
             exit 0
             ;;
         --update)
             check_root
             update
+            exit 0
+            ;;
+        --restart)
+            check_root
+            restart_service
+            exit 0
+            ;;
+        --status)
+            show_status
             exit 0
             ;;
         --uninstall)

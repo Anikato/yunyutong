@@ -40,20 +40,49 @@
                     {{ render_field(form.name) }}
                     {{ render_field(form.remarks, label_cols='col-md-3', input_cols='col-md-9') }}
 
-                    {# 显示凭证信息（部分隐藏） #}
+                    {# 显示凭证信息 #}
                     <div class="mb-3">
-                        <label class="form-label"><strong>凭证信息</strong></label>
+                        <label class="form-label d-flex justify-content-between align-items-center">
+                            <strong>凭证信息</strong>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleCredentials" onclick="toggleCredentialsVisibility()">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16" id="eyeIcon">
+                                    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                                    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                                </svg>
+                                <span id="toggleText">显示</span>
+                            </button>
+                        </label>
                         <div class="card bg-light">
                             <div class="card-body py-2">
-                                {% for key, value in masked_credentials.items() %}
-                                <div class="d-flex justify-content-between align-items-center {% if not loop.last %}mb-2{% endif %}">
-                                    <span class="text-muted">{{ key }}:</span>
-                                    <code>{{ value }}</code>
+                                {# 隐藏版本 #}
+                                <div id="maskedCredentials">
+                                    {% for key, value in masked_credentials.items() %}
+                                    <div class="d-flex justify-content-between align-items-center {% if not loop.last %}mb-2{% endif %}">
+                                        <span class="text-muted">{{ key }}:</span>
+                                        <code>{{ value }}</code>
+                                    </div>
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
+                                {# 完整版本（默认隐藏） #}
+                                <div id="fullCredentials" style="display: none;">
+                                    {% for key, value in credentials.items() %}
+                                    <div class="d-flex justify-content-between align-items-center {% if not loop.last %}mb-2{% endif %}">
+                                        <span class="text-muted">{{ key }}:</span>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <code class="user-select-all" id="cred-{{ key }}">{{ value }}</code>
+                                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="copyToClipboard('{{ value }}', this)" title="复制">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
-                        <div class="form-text">出于安全原因，凭证仅部分显示。如需更新凭证，请删除后重新添加。</div>
+                        <div class="form-text">如需更新凭证，请删除后重新添加。</div>
                     </div>
 
                     <div class="d-grid gap-2 mt-4">
@@ -65,4 +94,46 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let credentialsVisible = false;
+
+function toggleCredentialsVisibility() {
+    credentialsVisible = !credentialsVisible;
+    const maskedDiv = document.getElementById('maskedCredentials');
+    const fullDiv = document.getElementById('fullCredentials');
+    const toggleText = document.getElementById('toggleText');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    if (credentialsVisible) {
+        maskedDiv.style.display = 'none';
+        fullDiv.style.display = 'block';
+        toggleText.textContent = '隐藏';
+        eyeIcon.innerHTML = '<path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>';
+    } else {
+        maskedDiv.style.display = 'block';
+        fullDiv.style.display = 'none';
+        toggleText.textContent = '显示';
+        eyeIcon.innerHTML = '<path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>';
+    }
+}
+
+function copyToClipboard(text, btn) {
+    navigator.clipboard.writeText(text).then(function() {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-success');
+        setTimeout(function() {
+            btn.innerHTML = originalHtml;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 1500);
+    }).catch(function(err) {
+        console.error('复制失败:', err);
+    });
+}
+</script>
 {% endblock %}

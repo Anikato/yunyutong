@@ -85,8 +85,10 @@ def edit_token(token_id):
 
     form = EditApiTokenForm(obj=token_to_edit)
     
-    # 获取凭证信息用于显示（部分隐藏）
+    # 获取完整凭证信息
     credentials = token_to_edit.get_credentials()
+    
+    # 生成隐藏版本用于默认显示
     masked_credentials = {}
     for key, value in credentials.items():
         if value and len(str(value)) > 8:
@@ -108,4 +110,5 @@ def edit_token(token_id):
                            title='编辑凭证',
                            form=form,
                            token=token_to_edit,
-                           masked_credentials=masked_credentials)
+                           masked_credentials=masked_credentials,
+                           credentials=credentials)

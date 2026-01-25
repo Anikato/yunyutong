@@ -14,7 +14,7 @@
   <h2>编辑 DNS 记录</h2>
   <p>正在编辑 <strong>{{ record.name }}</strong> (类型: {{ record.type }}, ID: <code>{{ record.record_id }}</code>)</p>
 
-  <div class="my-4 p-3 border rounded bg-light">
+  <div class="add-record-section my-4">
       <form method="POST" action="{{ url_for('dns.edit_dns_record_route', record_id=record.record_id) }}" novalidate>
           {{ form.hidden_tag() }}
           <div class="row g-3">
