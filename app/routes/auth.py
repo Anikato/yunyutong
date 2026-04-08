@@ -23,11 +23,16 @@ _captcha_store:  dict = {}   # captcha_id -> {'answer': int, 'question': str, 'e
 
 
 def _client_ip() -> str:
-    """获取客户端真实 IP（支持反代）"""
-    forwarded = request.headers.get('X-Forwarded-For')
-    if forwarded:
-        return forwarded.split(',')[0].strip()
-    return request.remote_addr or '0.0.0.0'
+    """获取客户端真实 IP
+    优先读 X-Real-IP（nginx 用 $remote_addr 填充，不可伪造）；
+    直连时退回到 remote_addr。
+    不使用 X-Forwarded-For 的第一个值，因为客户端可以伪造该字段绕过限速。
+    """
+    return (
+        request.headers.get('X-Real-IP')
+        or request.remote_addr
+        or '0.0.0.0'
+    )
 
 
 def _attempt_info(ip: str) -> dict:

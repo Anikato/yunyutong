@@ -5,8 +5,8 @@ services:
     restart: unless-stopped
 
     ports:
-      # 左边是宿主机端口，可自行修改；右边容器端口固定 5000
-      - "5000:5000"
+      # 左边是宿主机端口，与 nginx proxy_pass 保持一致；右边容器端口固定 5000
+      - "4949:5000"
 
     # 直接读取同级目录的 .env 文件
     env_file:
