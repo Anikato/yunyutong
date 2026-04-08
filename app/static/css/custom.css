@@ -1027,3 +1027,90 @@ h4 { font-size: 1.125rem; }
 .form-switch .form-check-input:checked {
   background-color: var(--primary);
 }
+
+/* --- Bootstrap Modal 主题适配 --- */
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  color: var(--text-primary);
+}
+
+.modal-header {
+  background: transparent;
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 1.25rem;
+}
+
+.modal-title {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-body {
+  background: transparent;
+}
+
+.modal-footer {
+  background: transparent;
+  border-top: 1px solid var(--border-color);
+  padding: 0.875rem 1.25rem;
+}
+
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+/* --- List Group 主题适配（弹窗域名列表等）--- */
+.list-group-item {
+  background: transparent;
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  padding: 0.75rem 1.25rem;
+  transition: var(--transition-fast);
+}
+
+.list-group-item:first-child {
+  border-top: none;
+}
+
+.list-group-flush .list-group-item:last-child {
+  border-bottom: none;
+}
+
+.list-group-item:hover {
+  background: var(--bg-hover);
+}
+
+/* --- 凭证行域名 Badge 主题适配 --- */
+.domain-badge {
+  display: inline-block;
+  padding: 0.2em 0.55em;
+  font-size: 0.72rem;
+  font-weight: 400;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+/* --- Tooltip 主题适配 --- */
+.tooltip .tooltip-inner {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.tooltip .tooltip-arrow::before {
+  border-top-color: var(--border-color);
+}

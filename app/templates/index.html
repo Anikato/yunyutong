@@ -184,7 +184,7 @@
                   {% if domain_list %}
                     <div class="d-flex flex-wrap gap-1 align-items-center">
                       {% for domain in domain_list[:2] %}
-                        <span class="badge bg-light text-dark border" style="font-weight:400;font-size:0.72rem;">{{ domain.name }}</span>
+                        <span class="domain-badge">{{ domain.name }}</span>
                       {% endfor %}
                       {% if domain_list | length > 2 %}
                         <button type="button" class="btn btn-link btn-sm p-0 lh-1 small text-primary"
