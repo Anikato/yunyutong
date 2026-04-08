@@ -1,0 +1,32 @@
+services:
+  yunyutong:
+    image: l97312/yunyutong:latest
+    container_name: yunyutong
+    restart: unless-stopped
+
+    ports:
+      # 左边是宿主机端口，可自行修改；右边容器端口固定 5000
+      - "5000:5000"
+
+    # 直接读取同级目录的 .env 文件
+    env_file:
+      - .env
+
+    environment:
+      # 数据库路径指向容器内挂载的 data 目录
+      # 不要在 .env 里设置 DATABASE_URL，这里已统一配置
+      DATABASE_URL: sqlite:////app/data/yunyutong.db
+      FLASK_ENV: production
+      FLASK_DEBUG: "0"
+
+    volumes:
+      # 数据库目录：宿主机 ./data ↔ 容器内 /app/data
+      # 首次启动后 data/yunyutong.db 会自动生成
+      - ./data:/app/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
