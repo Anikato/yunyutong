@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}导出凭证 - 云域通{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">主页</a></li>
+        <li class="breadcrumb-item active">导出凭证</li>
+      </ol>
+    </nav>
+
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+        </svg>
+        <h5 class="mb-0">导出凭证</h5>
+      </div>
+
+      <div class="card-body">
+        <div class="alert alert-info d-flex gap-2 align-items-start">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="flex-shrink-0 mt-1" viewBox="0 0 16 16">
+            <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+          </svg>
+          <div>
+            将导出你的 <strong>{{ token_count }} 个</strong>凭证。API 密钥会用你设置的密码进行二次加密保存，在新服务器导入时需输入相同密码。
+          </div>
+        </div>
+
+        <form method="POST" id="exportForm">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">导出密码
+              <span class="text-muted fw-normal small">（至少 8 位）</span>
+            </label>
+            <input type="password" name="export_password" id="export_password"
+                   class="form-control" required minlength="8"
+                   placeholder="设置一个加密导出文件的密码">
+            <div class="form-text">此密码仅用于加密导出文件，不会上传到任何服务器。</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">确认密码</label>
+            <input type="password" id="confirm_password"
+                   class="form-control" required
+                   placeholder="再次输入密码">
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+              </svg>
+              下载导出文件
+            </button>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">取消</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body small text-muted">
+        <strong>安全说明：</strong>
+        <ul class="mb-0 ps-3 mt-1">
+          <li>导出文件包含加密的 API 密钥，请妥善保管，不要分享给他人</li>
+          <li>每个凭证使用独立的随机盐值（Salt）+ PBKDF2-SHA256 派生密钥加密</li>
+          <li>忘记密码后导出文件将无法解密，请务必牢记</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.getElementById('exportForm').addEventListener('submit', function(e) {
+  const p1 = document.getElementById('export_password').value;
+  const p2 = document.getElementById('confirm_password').value;
+  if (p1 !== p2) {
+    e.preventDefault();
+    alert('两次输入的密码不一致，请重新填写！');
+    document.getElementById('confirm_password').focus();
+  }
+});
+</script>
+{% endblock %}

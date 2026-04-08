@@ -208,6 +208,16 @@
       })();
     </script>
     
+    {# 初始化 Bootstrap Tooltip #}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipEls.forEach(function (el) {
+          new bootstrap.Tooltip(el, { trigger: 'hover' });
+        });
+      });
+    </script>
+
     {# 页面脚本 #}
     {% block scripts %}{% endblock %}
   </body>

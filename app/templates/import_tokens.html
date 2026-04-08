@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}导入凭证 - 云域通{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">主页</a></li>
+        <li class="breadcrumb-item active">导入凭证</li>
+      </ol>
+    </nav>
+
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+        </svg>
+        <h5 class="mb-0">导入凭证</h5>
+      </div>
+
+      <div class="card-body">
+        <div class="alert alert-warning d-flex gap-2 align-items-start">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="flex-shrink-0 mt-1" viewBox="0 0 16 16">
+            <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+          </svg>
+          <div>
+            若导入的凭证名称与现有凭证重名，将自动追加 <code>(imported)</code> 后缀。导入后请及时点击「验证凭证」确认有效性。
+          </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">选择导出文件</label>
+            <input type="file" name="import_file" class="form-control" accept=".json" required>
+            <div class="form-text">仅支持云域通导出的 .json 文件</div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">导出时使用的密码</label>
+            <input type="password" name="import_password" class="form-control" required
+                   placeholder="输入导出时设置的密码">
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+              </svg>
+              开始导入
+            </button>
+            <a href="{{ url_for('main.index') }}" class="btn btn-secondary">取消</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body small text-muted">
+        <strong>导入流程说明：</strong>
+        <ol class="mb-0 ps-3 mt-1">
+          <li>在原服务器「导出凭证」，下载 JSON 文件</li>
+          <li>将文件上传到此页面，输入导出时设置的密码</li>
+          <li>导入成功后，前往主页对各凭证点击「验证凭证」确认可用</li>
+          <li>进入域名列表点击「刷新」重新同步域名数据</li>
+        </ol>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

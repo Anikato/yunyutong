@@ -187,7 +187,16 @@
               <code class="small {% if search_query and search_query.lower() in record.content.lower() %}bg-warning{% endif %}">{{ record.content | truncate(60) }}</code>
             </td>
             <td>
-              <span class="text-muted small">{% if record.ttl == 1 %}Auto{% else %}{{ record.ttl }}{% endif %}</span>
+              <span class="text-muted small"
+                    data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="原始值：{{ record.ttl }} 秒">
+                {%- if record.ttl == 1 -%}Auto
+                {%- elif record.ttl < 60 -%}{{ record.ttl }}秒
+                {%- elif record.ttl < 3600 -%}{{ record.ttl // 60 }}分钟
+                {%- elif record.ttl < 86400 -%}{{ record.ttl // 3600 }}小时
+                {%- else -%}{{ record.ttl // 86400 }}天
+                {%- endif -%}
+              </span>
             </td>
             {% if supports_proxy %}
             <td>
@@ -199,26 +208,37 @@
             </td>
             {% endif %}
             <td>
-              <button type="button" class="btn btn-sm btn-outline-primary copy-btn" title="复制内容" onclick="copyRecordContent('{{ record.content | e }}', this)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
-                  <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
-                </svg>
-              </button>
-              <a href="{{ url_for('dns.edit_dns_record_route', record_id=record.record_id) }}" class="btn btn-sm btn-outline-secondary" title="编辑">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
-                  <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
-                </svg>
-              </a>
-              <form action="{{ url_for('dns.delete_dns_record_route', record_id=record.record_id) }}" method="POST" style="display: inline;"
-                    onsubmit="return confirm('确定要删除这条 DNS 记录 ({{ record.type }} {{ record.name }}) 吗？');">
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="删除">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+              <div class="d-flex gap-1">
+                {# 复制内容 - 工具操作，灰色 #}
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary copy-btn"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="复制记录内容"
+                        onclick="copyRecordContent('{{ record.content | e }}', this)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
                   </svg>
                 </button>
-              </form>
+                {# 编辑 - 修改操作，黄色警示 #}
+                <a href="{{ url_for('dns.edit_dns_record_route', record_id=record.record_id) }}"
+                   class="btn btn-sm btn-outline-warning"
+                   data-bs-toggle="tooltip" data-bs-placement="top" title="编辑此条记录">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+                  </svg>
+                </a>
+                {# 删除 - 危险操作，红色 #}
+                <form action="{{ url_for('dns.delete_dns_record_route', record_id=record.record_id) }}" method="POST" style="display:inline;"
+                      onsubmit="return confirm('确定要删除这条 DNS 记录 ({{ record.type }} {{ record.name }}) 吗？');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                          data-bs-toggle="tooltip" data-bs-placement="top" title="删除此条记录（不可恢复）">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                      <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
             </td>
           </tr>
           {% endfor %}
