@@ -6,17 +6,49 @@
 {% block content %}
 <div class="row justify-content-center align-items-center" style="min-height: 75vh;">
     <div class="col-md-6 col-lg-5 col-xl-4">
+
         <div class="text-center mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="text-primary" viewBox="0 0 16 16">
                 <path d="M8 2a5.53 5.53 0 0 0-3.594 1.342c-.766.66-1.321 1.52-1.464 2.383C1.266 6.095 0 7.555 0 9.318 0 11.366 1.708 13 3.781 13h8.906C14.502 13 16 11.57 16 9.773c0-1.636-1.242-2.969-2.834-3.194C12.923 3.999 10.69 2 8 2zm2.354 5.146a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2z"/>
             </svg>
             <h4 class="mt-2 text-primary" style="font-weight: 700;">云域通</h4>
         </div>
+
         <div class="card">
             <div class="card-body p-4 p-lg-5">
                 <h2 class="card-title text-center mb-4">登录账户</h2>
+
+                {# ── IP 被锁定 ── #}
+                {% if locked %}
+                <div class="alert alert-danger d-flex gap-2 align-items-start">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="flex-shrink-0 mt-1" viewBox="0 0 16 16">
+                        <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                    </svg>
+                    <div>
+                        <strong>账户暂时锁定</strong><br>
+                        连续登录失败次数过多，请 <strong>{{ lock_remaining }}</strong> 后重试。
+                    </div>
+                </div>
+
+                {# ── 正常登录表单 ── #}
+                {% else %}
+
+                {# 失败次数警告 #}
+                {% if fail_count > 0 and fail_count < 10 %}
+                <div class="alert alert-warning d-flex gap-2 align-items-center py-2 mb-3" style="font-size:0.85rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="flex-shrink-0" viewBox="0 0 16 16">
+                        <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                    </svg>
+                    已连续失败 <strong>{{ fail_count }}</strong> 次
+                    {% if fail_count < 3 %}，再失败 {{ 3 - fail_count }} 次将需要验证码
+                    {% else %}，再失败 {{ 10 - fail_count }} 次将被锁定 15 分钟
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
                     {{ form.hidden_tag() }}
+
                     <div class="mb-3">
                         {{ form.username.label(class="form-label") }}
                         {{ form.username(class="form-control form-control-lg" + (" is-invalid" if form.username.errors else ""), placeholder="请输入用户名") }}
@@ -24,6 +56,7 @@
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                     </div>
+
                     <div class="mb-3">
                         {{ form.password.label(class="form-label") }}
                         {{ form.password(class="form-control form-control-lg" + (" is-invalid" if form.password.errors else ""), placeholder="请输入密码") }}
@@ -31,20 +64,63 @@
                             <div class="invalid-feedback">{{ error }}</div>
                         {% endfor %}
                     </div>
+
+                    {# ── 验证码区域（失败 ≥ 3 次后显示）── #}
+                    {% if need_captcha %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold d-flex align-items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-warning" viewBox="0 0 16 16">
+                                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                            </svg>
+                            安全验证
+                        </label>
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <div class="captcha-box px-4 py-2 rounded text-center fw-bold fs-5" style="
+                                background: var(--bg-elevated);
+                                border: 2px solid var(--primary);
+                                color: var(--primary);
+                                letter-spacing: 0.15em;
+                                min-width: 120px;
+                                user-select: none;
+                            ">
+                                {{ captcha_question }} = ?
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="number" name="captcha_answer"
+                                       class="form-control form-control-lg text-center"
+                                       placeholder="计算结果"
+                                       required autocomplete="off"
+                                       style="font-size:1.1rem; font-weight:600;">
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                            </svg>
+                            请输入上方算式的计算结果（验证码 5 分钟内有效）
+                        </div>
+                        <input type="hidden" name="captcha_id" value="{{ captcha_id }}">
+                    </div>
+                    {% endif %}
+
                     <div class="mb-3 form-check">
                         {{ form.remember(class="form-check-input") }}
                         {{ form.remember.label(class="form-check-label") }}
                     </div>
+
                     <div class="d-grid gap-2 mt-4">
                         {{ form.submit(class="btn btn-primary btn-lg") }}
                     </div>
                 </form>
+                {% endif %}
+
                 <hr class="my-4">
                 <p class="text-center small text-muted mb-0">
-                    还没有账户? <a href="{{ url_for('auth.register') }}" class="text-primary" style="font-weight: 500;">点此注册</a>
+                    还没有账户？<a href="{{ url_for('auth.register') }}" class="text-primary" style="font-weight: 500;">点此注册</a>
                 </p>
             </div>
         </div>
+
     </div>
 </div>
 {% endblock %}
