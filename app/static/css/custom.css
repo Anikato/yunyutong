@@ -834,6 +834,26 @@ h4 { font-size: 1.125rem; }
   margin-bottom: 1.5rem;
 }
 
+.global-search-section {
+  box-shadow: var(--shadow-sm);
+}
+
+.global-search-content {
+  max-width: 360px;
+  overflow-wrap: anywhere;
+}
+
+.domain-inline-link {
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.domain-inline-link:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
 /* --- 空状态 --- */
 .empty-state {
   text-align: center;
