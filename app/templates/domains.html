@@ -4,51 +4,26 @@
 {% block content %}
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">主页</a></li>
-      <li class="breadcrumb-item active" aria-current="page">{{ token.get_provider_display_name() }}: {{ token.name }}</li>
+      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">工作台</a></li>
+      <li class="breadcrumb-item active" aria-current="page">域名</li>
     </ol>
   </nav>
 
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <header class="workbench-header">
     <div>
-      <h2 class="mb-1">域名列表</h2>
-      <p class="text-muted mb-0">
-        凭证: <strong>{{ token.name }}</strong>
-        {% if token.provider_type == 'cloudflare' %}
-          <span class="provider-badge cloudflare ms-2">Cloudflare</span>
-        {% elif token.provider_type == 'aliyun' %}
-          <span class="provider-badge aliyun ms-2">阿里云</span>
-        {% else %}
-          <span class="badge bg-secondary ms-2">{{ token.provider_type }}</span>
-        {% endif %}
-      </p>
+      <h1>{{ token.name }}</h1>
+      <p class="page-meta">{{ token.get_provider_display_name() }} · {{ domains | length }} 个本地域名</p>
     </div>
-    <div class="d-flex gap-2">
-      <a href="{{ url_for('dns.view_domains', token_id=token.id) }}" class="btn btn-outline-primary" title="从服务商重新同步域名列表">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16">
-          <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
-          <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
-        </svg>
-        刷新
-      </a>
-      <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16">
-          <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-        </svg>
-        返回
-      </a>
-    </div>
-  </div>
+    <form method="POST" action="{{ url_for('dns.view_domains', token_id=token.id, sort=current_sort) }}" id="domain-refresh">
+      {{ action_form.hidden_tag() }}
+      {% if domains %}<button type="submit" class="btn btn-primary">刷新域名</button>{% endif %}
+    </form>
+  </header>
 
   {% if domains %}
     <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="me-2" viewBox="0 0 16 16">
-            <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5V1.077zM4.09 4a9.267 9.267 0 0 1 .64-1.539 6.7 6.7 0 0 1 .597-.933A7.025 7.025 0 0 0 2.255 4H4.09z"/>
-          </svg>
-          域名
-        </h5>
+      <div class="card-header workbench-header">
+        <h2 class="section-title">域名列表</h2>
         <div class="d-flex align-items-center gap-2">
           <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -72,18 +47,17 @@
               <li><a class="dropdown-item {% if current_sort == 'date' %}active{% endif %}" href="?sort=date">同步时间</a></li>
             </ul>
           </div>
-          <span class="badge bg-secondary">{{ domains | length }} 个</span>
         </div>
       </div>
       <div class="table-responsive">
-        <table class="table mb-0">
+        <table class="table table-compact mb-0">
           <thead>
             <tr>
               {% if current_sort == 'custom' %}<th style="width: 40px;"></th>{% endif %}
               <th>域名</th>
               <th>状态</th>
-              <th>Zone ID</th>
-              <th>上次同步</th>
+              <th class="desktop-only">Zone ID</th>
+              <th class="desktop-only">上次同步</th>
               <th style="width: 120px;">操作</th>
             </tr>
           </thead>
@@ -98,7 +72,7 @@
               </td>
               {% endif %}
               <td>
-                <strong>{{ domain.name }}</strong>
+                <a class="record-link" href="{{ url_for('dns.manage_dns_records', domain_id=domain.id) }}">{{ domain.name }}</a>
               </td>
               <td>
                 {% if domain.status == 'active' or domain.status == 'ENABLE' %}
@@ -112,18 +86,12 @@
                   <span class="badge bg-secondary">{{ domain.status }}</span>
                 {% endif %}
               </td>
-              <td><code class="small">{{ domain.zone_id }}</code></td>
-              <td>
+              <td class="desktop-only"><code class="small">{{ domain.zone_id }}</code></td>
+              <td class="desktop-only">
                 <span class="text-muted small">{{ domain.fetched_at.strftime('%Y-%m-%d %H:%M') if domain.fetched_at else '-' }}</span>
               </td>
               <td>
-                <a href="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id) }}" class="btn btn-primary btn-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16">
-                    <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34z"/>
-                    <path d="M8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
-                  </svg>
-                  管理 DNS
-                </a>
+                <a href="{{ url_for('dns.manage_dns_records', domain_id=domain.id) }}" class="btn btn-outline-secondary btn-sm">DNS 记录</a>
               </td>
             </tr>
             {% endfor %}
@@ -132,15 +100,14 @@
       </div>
     </div>
   {% else %}
-    <div class="card">
-      <div class="card-body empty-state">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 0 0 5.145 4H7.5V1.077z"/>
-        </svg>
-        <h5>未找到域名</h5>
-        <p class="mb-0">未能找到与此凭证关联的域名。请检查凭证权限是否正确。</p>
+    <section class="card workbench-empty">
+      <h2>本地暂无域名</h2>
+      <p>刷新可读取此凭证有权访问的域名。</p>
+      <div class="workbench-actions">
+        <button type="submit" form="domain-refresh" class="btn btn-primary">刷新域名</button>
+        <a href="{{ url_for('token.edit_token', token_id=token.id) }}" class="btn btn-outline-secondary">查看凭证</a>
       </div>
-    </div>
+    </section>
   {% endif %}
 {% endblock %}
 

@@ -204,47 +204,22 @@ setup_logs() {
 
 # 初始化数据库
 init_database() {
-    print_header "初始化数据库"
-    
-    DB_FILE="${APP_DIR}/yunyutong.db"
-    
-    if [ -f "$DB_FILE" ]; then
-        print_warning "数据库文件已存在: $DB_FILE"
-        print_info "跳过数据库初始化"
-    else
-        print_info "创建数据库..."
-        cd "$APP_DIR"
-        
-        # 以目标用户身份运行，避免权限问题
+    print_header "初始化或升级数据库"
+
+    if ! (
+        cd "$APP_DIR" || exit 1
         if [ "$EUID" -eq 0 ] && [ -n "$APP_USER" ] && [ "$APP_USER" != "root" ]; then
-            sudo -u "$APP_USER" "$VENV_DIR/bin/python3" << 'PYEOF'
-from app import create_app
-from app.extensions import db
-
-app = create_app()
-with app.app_context():
-    db.create_all()
-    print("数据库表已创建")
-PYEOF
+            sudo -u "$APP_USER" "$VENV_DIR/bin/python3" migrate_db.py
         else
-            "$VENV_DIR/bin/python3" << 'PYEOF'
-from app import create_app
-from app.extensions import db
-
-app = create_app()
-with app.app_context():
-    db.create_all()
-    print("数据库表已创建")
-PYEOF
+            "$VENV_DIR/bin/python3" migrate_db.py
         fi
-        
-        if [ $? -ne 0 ]; then
-            print_error "数据库初始化失败"
-            exit 1
-        fi
+    ); then
+        print_error "数据库初始化或升级失败"
+        exit 1
     fi
     
     # 确保数据库文件权限正确
+    DB_FILE="${APP_DIR}/yunyutong.db"
     if [ -f "$DB_FILE" ]; then
         chown "$APP_USER:$APP_USER" "$DB_FILE" 2>/dev/null || true
         chmod 644 "$DB_FILE" 2>/dev/null || true
@@ -264,8 +239,8 @@ setup_permissions() {
     # 设置目录权限为 755
     find "$APP_DIR" -type d -exec chmod 755 {} \;
     
-    # 设置普通文件权限为 644，但排除 venv/bin 目录
-    find "$APP_DIR" -type f ! -path "*/venv/bin/*" -exec chmod 644 {} \;
+    # 保留迁移备份的私有权限
+    find "$APP_DIR" -type f ! -path "*/venv/bin/*" ! -name "*.backup-*.db" -exec chmod 644 {} \;
     
     # venv/bin 下的文件需要执行权限
     if [ -d "$VENV_DIR/bin" ]; then
@@ -497,8 +472,12 @@ update() {
     print_info "更新 Python 依赖..."
     "$VENV_DIR/bin/pip3" install -r "$APP_DIR/requirements.txt" -q --upgrade
     
-    print_info "重启服务..."
-    systemctl restart "$APP_NAME"
+    print_info "停止服务以升级数据库..."
+    systemctl stop "$APP_NAME" || exit 1
+    init_database
+
+    print_info "启动服务..."
+    systemctl start "$APP_NAME"
     
     sleep 2
     

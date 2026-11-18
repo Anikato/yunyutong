@@ -84,7 +84,9 @@ class CloudflareProvider(DNSProvider):
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("success"):
-                        results = data.get("result", [])
+                        results = data["result"]
+                        if not isinstance(results, list):
+                            raise RuntimeError("Cloudflare 域名列表返回格式异常")
                         if not results:
                             break
                         for zone in results:
@@ -98,14 +100,14 @@ class CloudflareProvider(DNSProvider):
                         page += 1
                     else:
                         logger.error(f"获取 Cloudflare Zones 失败: {response.text}")
-                        return []
+                        raise RuntimeError("获取 Cloudflare 域名列表失败")
                 else:
                     logger.error(f"获取 Cloudflare Zones 失败 (HTTP {response.status_code}): {response.text}")
-                    return []
+                    raise RuntimeError("获取 Cloudflare 域名列表失败")
                     
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
             logger.error(f"获取 Cloudflare Zones 网络错误: {e}")
-            return []
+            raise RuntimeError("获取 Cloudflare 域名列表失败") from e
         
         return zones
     
@@ -124,26 +126,30 @@ class CloudflareProvider(DNSProvider):
                     timeout=15
                 )
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("success"):
-                        results = data.get("result", [])
-                        if not results:
-                            break
-                        records.extend(results)
-                        if len(results) < params['per_page']:
-                            break
-                        page += 1
-                    else:
-                        logger.error(f"获取 Cloudflare DNS 记录失败: {data.get('errors')}")
-                        return []
-                else:
-                    logger.error(f"获取 Cloudflare DNS 记录失败 (HTTP {response.status_code}): {response.text}")
-                    return []
-                    
-        except Exception as e:
-            logger.exception(f"获取 Cloudflare DNS 记录异常: {e}")
-            return []
+                response.raise_for_status()
+                data = response.json()
+                if response.status_code != 200 or not data.get("success"):
+                    raise RuntimeError("获取 Cloudflare DNS 记录失败")
+                results = data['result']
+                if not isinstance(results, list):
+                    raise RuntimeError("Cloudflare DNS 记录返回格式异常")
+                records.extend(results)
+                info = data.get('result_info') or {}
+                total_pages = info.get('total_pages')
+                if total_pages is not None:
+                    if page >= total_pages:
+                        break
+                    if not results:
+                        raise RuntimeError("Cloudflare DNS 记录分页不完整")
+                elif len(results) < params['per_page']:
+                    break
+                page += 1
+            total = info.get('total_count')
+            if total is not None and len(records) != total:
+                raise RuntimeError("Cloudflare DNS 记录分页不完整")
+
+        except (requests.exceptions.RequestException, KeyError, ValueError, TypeError) as e:
+            raise RuntimeError("获取 Cloudflare DNS 记录失败") from e
         
         return records
     

@@ -76,6 +76,9 @@ class DNSProvider(ABC):
             - id: 域名唯一标识
             - name: 域名名称
             - status: 域名状态
+
+        Raises:
+            RuntimeError: 无法获取列表。空列表表示获取成功且没有域名。
         """
         pass
     
@@ -96,6 +99,9 @@ class DNSProvider(ABC):
             - ttl: TTL 值
             - proxied: 是否代理（仅 Cloudflare）
             - priority: 优先级（MX, SRV 记录）
+
+        Raises:
+            RuntimeError: 无法获取完整列表。空列表表示获取成功且没有记录。
         """
         pass
     

@@ -66,14 +66,8 @@ mkdir -p data   # 首次部署需创建数据目录
 docker compose up -d
 ```
 
-**4. 初始化（仅首次）**
-
-```bash
-# 创建管理员账号
-docker exec -it yunyutong python3 manage_user.py
-```
-
-访问 `http://服务器IP:5000`
+容器启动时会初始化数据库，已有旧库会先备份再升级。
+首次使用请访问 `http://服务器IP:4949/register` 注册账号。
 
 ---
 
@@ -127,6 +121,7 @@ cp env.example .env
 ```bash
 source venv/bin/activate
 export FLASK_ENV=development
+python3 migrate_db.py
 python3 run.py
 ```
 
@@ -178,11 +173,15 @@ yunyutong/
 
 ## 🔄 数据库迁移
 
-如果从旧版本升级：
+Docker 启动时自动执行。手动部署时，在首次启动或升级前运行下列命令：
 
 ```bash
 python3 migrate_db.py
 ```
+
+命令读取 `DATABASE_URL`。旧版 SQLite 库升级前会在同目录生成 `<库名>.backup-<时间>.db`，Docker 用户可在挂载的 `./data` 中找到备份。回退旧版本时需同时恢复升级前的数据库。
+
+域名和 DNS 记录列表读取本地缓存。首次打开或需要查看云端最新数据时，点击「刷新域名」或「刷新记录」。
 
 ## 🔌 添加新的 DNS Provider
 
@@ -219,7 +218,7 @@ docker compose restart            # 重启
 docker compose pull && docker compose up -d  # 更新到最新镜像
 
 docker compose logs -f            # 实时查看日志
-docker exec -it yunyutong python3 manage_user.py  # 管理用户
+docker exec -it yunyutong python3 manage_user.py list  # 查看用户
 ```
 
 **传统 Systemd 方式：**

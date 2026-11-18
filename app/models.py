@@ -62,7 +62,7 @@ class ApiToken(db.Model):
     provider_type = db.Column(db.String(50), nullable=False, default='cloudflare')
     
     # 加密存储的凭证 (JSON 格式，支持不同 provider 的不同凭证结构)
-    encrypted_credentials = db.Column(db.LargeBinary, nullable=False)
+    encrypted_credentials = db.Column(db.LargeBinary, nullable=True)  # 旧凭证通过 encrypted_token 读取
     
     # 兼容旧字段 - 保留用于数据迁移
     encrypted_token = db.Column(db.LargeBinary, nullable=True)
@@ -147,8 +147,10 @@ class ApiToken(db.Model):
 
 
 class Domain(db.Model):
+    __table_args__ = (db.UniqueConstraint('api_token_id', 'zone_id'), {'sqlite_autoincrement': True})
+
     id = db.Column(db.Integer, primary_key=True)
-    zone_id = db.Column(db.String(100), unique=True, nullable=False)
+    zone_id = db.Column(db.String(100), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     status = db.Column(db.String(50), nullable=True)
     fetched_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -157,6 +159,8 @@ class Domain(db.Model):
     # 排序字段 (数字越小越靠前，0 表示使用默认排序)
     sort_order = db.Column(db.Integer, default=0, nullable=False)
     
+    dns_sync_version = db.Column(db.Integer, server_default='0', nullable=False)
+
     dns_records = db.relationship('DnsRecord', backref='domain', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -164,8 +168,10 @@ class Domain(db.Model):
 
 
 class DnsRecord(db.Model):
+    __table_args__ = (db.UniqueConstraint('domain_id', 'record_id'), {'sqlite_autoincrement': True})
+
     id = db.Column(db.Integer, primary_key=True)
-    record_id = db.Column(db.String(100), unique=True, nullable=False)
+    record_id = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(20), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     content = db.Column(db.String(1000), nullable=False)

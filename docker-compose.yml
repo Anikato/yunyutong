@@ -23,10 +23,3 @@ services:
       # 数据库目录：宿主机 ./data ↔ 容器内 /app/data
       # 首次启动后 data/yunyutong.db 会自动生成
       - ./data:/app/data
-
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:5000 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s

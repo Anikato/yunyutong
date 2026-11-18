@@ -1,242 +1,151 @@
 {% extends "base.html" %}
+{% from "_formhelpers.html" import stacked_field %}
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-  <nav aria-label="breadcrumb">
+  {% set editor_open = request.method == 'POST' %}
+  {% macro action_csrf() %}{% if action_form.csrf_token is defined %}{{ action_form.csrf_token(id=false) }}{% endif %}{% endmacro %}
+  <nav aria-label="面包屑">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">主页</a></li>
-      <li class="breadcrumb-item"><a href="{{ url_for('dns.view_domains', token_id=token.id) }}">{{ token.get_provider_display_name() }}: {{ token.name }}</a></li>
-      <li class="breadcrumb-item active" aria-current="page">DNS: {{ domain.name }}</li>
+      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">工作台</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('dns.view_domains', token_id=token.id) }}">{{ token.name }}</a></li>
+      <li class="breadcrumb-item active" aria-current="page">DNS 记录</li>
     </ol>
   </nav>
 
-  <h2>DNS 记录 ({{ domain.name }})</h2>
-  <p><code class="small">Zone ID: {{ domain.zone_id }}</code></p>
-
-  {# --- 添加新记录表单 --- #}
-  <div class="add-record-section mb-4">
-      <h4>添加新记录</h4>
-      <form method="POST" action="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id) }}" novalidate>
-          {{ add_form.hidden_tag() }}
-          <div class="row g-3">
-              <div class="col-md-3">
-                  {{ add_form.record_type.label(class="form-label") }}
-                  {{ add_form.record_type(class="form-select" + (" is-invalid" if add_form.record_type.errors else "")) }}
-                  {% for error in add_form.record_type.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-              </div>
-              <div class="col-md-4">
-                  {{ add_form.name.label(class="form-label") }}
-                  {{ add_form.name(class="form-control" + (" is-invalid" if add_form.name.errors else ""), placeholder="@ 或子域名") }}
-                  {% for error in add_form.name.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-              </div>
-              <div class="col-md-5">
-                   {{ add_form.content.label(class="form-label") }}
-                   {{ add_form.content(class="form-control" + (" is-invalid" if add_form.content.errors else "")) }}
-                   {% for error in add_form.content.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-              </div>
-              <div class="col-md-3">
-                  {{ add_form.ttl.label(class="form-label") }}
-                  {{ add_form.ttl(class="form-select" + (" is-invalid" if add_form.ttl.errors else "")) }}
-                  {% for error in add_form.ttl.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-              </div>
-              {# Priority field, initially hidden #}
-              <div class="col-md-2" id="priority-field" style="display: none;">
-                   {{ add_form.priority.label(class="form-label") }}
-                   {{ add_form.priority(class="form-control" + (" is-invalid" if add_form.priority.errors else ""), type="number") }}
-                   {% for error in add_form.priority.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
-              </div>
-              {% if supports_proxy %}
-              <div class="col-md-3 d-flex align-items-end">
-                  <div class="form-check form-switch mb-3">
-                      {{ add_form.proxied(class="form-check-input") }}
-                      {{ add_form.proxied.label(class="form-check-label") }}
-                  </div>
-              </div>
-              {% endif %}
-               <div class="col-md-4 d-flex align-items-end">
-                  {{ add_form.submit(class="btn btn-primary") }}
-              </div>
-          </div>
+  <header class="workbench-header">
+    <div>
+      <h1 class="dns-title">{{ domain.name }}</h1>
+      <p class="page-meta">{{ token.get_provider_display_name() }} · {{ total_records }} 条本地记录</p>
+    </div>
+    <div class="workbench-actions">
+      <form method="POST" action="{{ url_for('dns.sync_domain_records', domain_id=domain.id, q=search_query, type=filter_type) }}" id="records-refresh">
+        {{ action_csrf() }}
+        <button type="submit" class="btn btn-outline-secondary">刷新记录</button>
       </form>
-       <script>
-         const recordTypeSelect = document.getElementById('record_type');
-         const priorityField = document.getElementById('priority-field');
-         function togglePriority() {
-           if (recordTypeSelect.value === 'MX' || recordTypeSelect.value === 'SRV') {
-             priorityField.style.display = 'block';
-           } else {
-             priorityField.style.display = 'none';
-           }
-         }
-         recordTypeSelect.addEventListener('change', togglePriority);
-         document.addEventListener('DOMContentLoaded', togglePriority);
-       </script>
+      <button type="button" class="btn btn-primary" data-bs-toggle="collapse" data-bs-target="#record-editor"
+              aria-expanded="{{ 'true' if editor_open else 'false' }}" aria-controls="record-editor">＋ 添加记录</button>
+    </div>
+  </header>
+
+  <div class="collapse{% if editor_open %} show{% endif %}" id="record-editor">
+    <section class="card record-editor" aria-labelledby="record-editor-title">
+      <div class="card-body">
+        <h2 id="record-editor-title" class="section-title mb-3">添加 DNS 记录</h2>
+        <form method="POST" action="{{ url_for('dns.manage_dns_records', domain_id=domain.id) }}" novalidate>
+          {{ add_form.hidden_tag() }}
+          {% if add_form.csrf_token is defined and add_form.csrf_token.errors %}
+            <p class="alert alert-danger" role="alert">{{ add_form.csrf_token.errors | join(' ') }}</p>
+          {% endif %}
+          <div class="row g-3">
+            <div class="col-sm-4">{{ stacked_field(add_form.record_type, 'form-select') }}</div>
+            <div class="col-sm-8">{{ stacked_field(add_form.name, placeholder='@ 或子域名') }}</div>
+            <div class="col-12">{{ stacked_field(add_form.content) }}</div>
+            <div class="col-sm-4">{{ stacked_field(add_form.ttl, 'form-select') }}</div>
+            <div class="col-sm-4" id="priority-field"{% if add_form.record_type.data not in ['MX', 'SRV'] %} hidden{% endif %}>
+              {{ stacked_field(add_form.priority) }}
+            </div>
+            {% if supports_proxy %}
+            <div class="col-sm-4 align-self-end">
+              <div class="form-check form-switch py-2">
+                {{ add_form.proxied(class='form-check-input') }}
+                {{ add_form.proxied.label(class='form-check-label') }}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          <div class="workbench-actions mt-3">
+            {{ add_form.submit(class='btn btn-primary', value='保存记录') }}
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#record-editor">收起</button>
+          </div>
+        </form>
+      </div>
+    </section>
   </div>
 
-  {# --- 搜索和筛选区域 --- #}
-  <div class="search-section">
-      <form method="GET" action="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id) }}" class="row g-3 align-items-end">
-        {# 搜索框 #}
-        <div class="col-md-5">
-          <label for="search-input" class="form-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search me-1" viewBox="0 0 16 16">
-              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-            </svg>
-            搜索记录
-          </label>
-          <input type="text" class="form-control" id="search-input" name="q" 
-                 value="{{ search_query }}" placeholder="输入名称或内容搜索...">
-        </div>
-        
-        {# 类型筛选 #}
-        <div class="col-md-3">
-          <label for="type-filter" class="form-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-funnel me-1" viewBox="0 0 16 16">
-              <path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5v-2zm1 .5v1.308l4.372 4.858A.5.5 0 0 1 7 8.5v5.306l2-.666V8.5a.5.5 0 0 1 .128-.334L13.5 3.308V2h-11z"/>
-            </svg>
-            按类型筛选
-          </label>
-          <select class="form-select" id="type-filter" name="type">
-            <option value="">全部类型</option>
-            {% for type in available_types %}
-            <option value="{{ type }}" {% if filter_type == type %}selected{% endif %}>{{ type }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        
-        {# 按钮 #}
-        <div class="col-md-4">
-          <button type="submit" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search me-1" viewBox="0 0 16 16">
-              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-            </svg>
-            搜索
-          </button>
-          {% if search_query or filter_type %}
-          <a href="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id) }}" class="btn btn-outline-secondary ms-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle me-1" viewBox="0 0 16 16">
-              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-              <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
-            </svg>
-            清除筛选
-          </a>
-          {% endif %}
-        </div>
-      </form>
-      
-    {# 统计信息 #}
-    <div class="mt-3 text-muted small">
-      {% if search_query or filter_type %}
-        <span class="badge bg-info me-2">
-          {% if filter_type %}类型: {{ filter_type }}{% endif %}
-          {% if search_query %}{% if filter_type %} | {% endif %}关键词: "{{ search_query }}"{% endif %}
-        </span>
-        找到 <strong>{{ filtered_count }}</strong> 条记录（共 {{ total_records }} 条）
-      {% else %}
-        共 <strong>{{ total_records }}</strong> 条 DNS 记录
+  <section class="card records-panel" aria-labelledby="records-title">
+    <div class="card-header workbench-header">
+      <div>
+        <h2 id="records-title" class="section-title">记录列表</h2>
+        {% if search_query or filter_type %}
+        <p class="page-meta">匹配 {{ filtered_count }} 条 · 共 {{ total_records }} 条</p>
+        {% endif %}
+      </div>
+      {% if records %}
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="export-records">导出当前页</button>
       {% endif %}
     </div>
-  </div>
 
-  {# --- 现有记录 --- #}
-  {% if pagination and pagination.total > 0 %}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="mb-0">
-        {% if search_query or filter_type %}搜索结果{% else %}现有记录{% endif %}
-      </h3>
-      
-      {# --- Bulk Delete Form --- #}
-      <form id="bulk-delete-form" action="{{ url_for('dns.bulk_delete_dns_records', zone_id=domain.zone_id) }}" method="POST" onsubmit="return confirmBulkDelete();" class="mb-0">
-          <button type="submit" class="btn btn-danger btn-sm" id="delete-selected-btn" disabled>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash me-1" viewBox="0 0 16 16">
-              <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-              <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-            </svg>
-            删除选中
-          </button>
-      </form>
-    </div>
+    <form method="GET" action="{{ url_for('dns.manage_dns_records', domain_id=domain.id) }}"
+          class="record-filters" role="search" aria-label="筛选当前域名的记录">
+      <label for="search-input" class="visually-hidden">记录名称或内容</label>
+      <input type="search" class="form-control" id="search-input" name="q" value="{{ search_query }}" placeholder="按名称或内容搜索">
+      <label for="type-filter" class="visually-hidden">记录类型</label>
+      <select class="form-select" id="type-filter" name="type">
+        <option value="">全部类型</option>
+        {% for record_type in available_types %}
+        <option value="{{ record_type }}"{% if filter_type == record_type %} selected{% endif %}>{{ record_type }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-outline-secondary">筛选</button>
+      {% if search_query or filter_type %}
+      <a href="{{ url_for('dns.manage_dns_records', domain_id=domain.id) }}" class="btn btn-link">清除</a>
+      {% endif %}
+    </form>
 
-    {# --- Records Table --- #}
-    <div class="table-responsive">
-      <table class="table table-striped table-hover">
-        <thead class="table-light">
+    {% if records %}
+    <form id="bulk-delete-form" class="selection-bar" method="POST" hidden
+          action="{{ url_for('dns.bulk_delete_dns_records', domain_id=domain.id) }}">
+      {{ action_csrf() }}
+      <span id="selected-count" aria-live="polite"></span>
+      <div class="workbench-actions">
+        <button type="reset" class="btn btn-sm btn-outline-secondary">取消选择</button>
+        <button type="submit" class="btn btn-sm btn-outline-danger">删除选中</button>
+      </div>
+    </form>
+
+    <div class="table-responsive" role="region" aria-label="DNS 记录列表" tabindex="0">
+      <table class="table table-compact record-table">
+        <thead>
           <tr>
-            <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-checkbox" title="全选/全不选" class="form-check-input"></th>
-            <th scope="col" style="width: 80px;">类型</th>
+            <th scope="col" class="select-column">
+              <input type="checkbox" id="select-all-checkbox" class="form-check-input" aria-label="选择当前页的全部记录">
+            </th>
             <th scope="col">名称</th>
             <th scope="col">内容</th>
-            <th scope="col" style="width: 80px;">TTL</th>
-            {% if supports_proxy %}
-            <th scope="col" style="width: 60px;">代理</th>
-            {% endif %}
-            <th scope="col" style="width: 140px;">操作</th>
+            <th scope="col" class="desktop-only">TTL</th>
+            {% if supports_proxy %}<th scope="col" class="desktop-only">代理</th>{% endif %}
+            <th scope="col">操作</th>
           </tr>
         </thead>
         <tbody>
           {% for record in records %}
+          {% set ttl_label = '自动' if record.ttl == 1 else (record.ttl ~ ' 秒' if record.ttl is not none else '—') %}
           <tr>
-            <td><input type="checkbox" class="record-checkbox form-check-input" value="{{ record.record_id }}"></td>
+            <td><input type="checkbox" class="record-checkbox form-check-input" name="record_ids" value="{{ record.record_id }}"
+                       form="bulk-delete-form" aria-label="选择 {{ record.name }} 的 {{ record.type }} 记录"></td>
             <td>
-              <span class="badge record-type-{{ record.type }}">{{ record.type }}</span>
+              <span class="record-kind">{{ record.type }}</span>
+              <code class="record-text{% if search_query and search_query.lower() in record.name.lower() %} bg-warning{% endif %}">{{ record.name }}</code>
             </td>
-            <td>
-              <code class="{% if search_query and search_query.lower() in record.name.lower() %}bg-warning{% endif %}">{{ record.name }}</code>
+            <td class="record-value">
+              <code class="record-text{% if search_query and search_query.lower() in record.content.lower() %} bg-warning{% endif %}">{{ record.content | truncate(180) }}</code>
+              <small class="record-meta mobile-only">TTL {{ ttl_label }}{% if supports_proxy %} · {{ '代理开启' if record.proxied else '代理关闭' }}{% endif %}</small>
             </td>
-            <td style="max-width: 300px; overflow-wrap: break-word;">
-              <code class="small {% if search_query and search_query.lower() in record.content.lower() %}bg-warning{% endif %}">{{ record.content | truncate(60) }}</code>
-            </td>
-            <td>
-              <span class="text-muted small"
-                    data-bs-toggle="tooltip" data-bs-placement="top"
-                    title="原始值：{{ record.ttl }} 秒">
-                {%- if record.ttl == 1 -%}Auto
-                {%- elif record.ttl < 60 -%}{{ record.ttl }}秒
-                {%- elif record.ttl < 3600 -%}{{ record.ttl // 60 }}分钟
-                {%- elif record.ttl < 86400 -%}{{ record.ttl // 3600 }}小时
-                {%- else -%}{{ record.ttl // 86400 }}天
-                {%- endif -%}
-              </span>
-            </td>
+            <td class="desktop-only"><span class="record-meta">{{ ttl_label }}</span></td>
             {% if supports_proxy %}
-            <td>
-              {% if record.proxied %}
-                <span class="badge bg-success" title="已开启 Cloudflare 代理">开</span>
-              {% else %}
-                <span class="badge bg-secondary" title="未开启代理">关</span>
-              {% endif %}
-            </td>
+            <td class="desktop-only"><span class="{{ 'status-on' if record.proxied else 'record-meta' }}">{{ '开启' if record.proxied else '关闭' }}</span></td>
             {% endif %}
             <td>
-              <div class="d-flex gap-1">
-                {# 复制内容 - 工具操作，灰色 #}
-                <button type="button"
-                        class="btn btn-sm btn-outline-secondary copy-btn"
-                        data-bs-toggle="tooltip" data-bs-placement="top" title="复制记录内容"
-                        onclick="copyRecordContent('{{ record.content | e }}', this)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
-                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
-                  </svg>
-                </button>
-                {# 编辑 - 修改操作，黄色警示 #}
-                <a href="{{ url_for('dns.edit_dns_record_route', record_id=record.record_id) }}"
-                   class="btn btn-sm btn-outline-warning"
-                   data-bs-toggle="tooltip" data-bs-placement="top" title="编辑此条记录">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
-                  </svg>
-                </a>
-                {# 删除 - 危险操作，红色 #}
-                <form action="{{ url_for('dns.delete_dns_record_route', record_id=record.record_id) }}" method="POST" style="display:inline;"
-                      onsubmit="return confirm('确定要删除这条 DNS 记录 ({{ record.type }} {{ record.name }}) 吗？');">
-                  <button type="submit" class="btn btn-sm btn-outline-danger"
-                          data-bs-toggle="tooltip" data-bs-placement="top" title="删除此条记录（不可恢复）">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                      <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
-                    </svg>
-                  </button>
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-copy="{{ record.content | tojson | forceescape }}"
+                        aria-label="复制 {{ record.name }} 的记录内容">复制</button>
+                <a href="{{ url_for('dns.edit_dns_record_route', record_pk=record.id, q=search_query or none, type=filter_type or none, page=pagination.page if pagination.page > 1 else none) }}" class="btn btn-sm btn-outline-secondary"
+                   aria-label="编辑 {{ record.name }} 的记录">编辑</a>
+                <form method="POST" action="{{ url_for('dns.delete_dns_record_route', record_pk=record.id) }}"
+                      data-delete-record="{{ record.type }} {{ record.name }}">
+                  {{ action_csrf() }}
+                  <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="删除 {{ record.name }} 的记录">删除</button>
                 </form>
               </div>
             </td>
@@ -245,181 +154,141 @@
         </tbody>
       </table>
     </div>
-
-    {# --- JavaScript for Checkboxes and Bulk Delete --- #}
-    <script>
-        const selectAllCheckbox = document.getElementById('select-all-checkbox');
-        const recordCheckboxes = document.querySelectorAll('.record-checkbox');
-        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-        const bulkDeleteForm = document.getElementById('bulk-delete-form');
-
-        function checkSelectedState() {
-            const anySelected = Array.from(recordCheckboxes).some(cb => cb.checked);
-            deleteSelectedBtn.disabled = !anySelected;
-            const allSelected = Array.from(recordCheckboxes).every(cb => cb.checked);
-            if (recordCheckboxes.length > 0) {
-                selectAllCheckbox.checked = allSelected;
-                selectAllCheckbox.indeterminate = anySelected && !allSelected;
-            } else {
-                 selectAllCheckbox.checked = false;
-                 selectAllCheckbox.indeterminate = false;
-            }
-            
-            // 更新按钮文字
-            const selectedCount = Array.from(recordCheckboxes).filter(cb => cb.checked).length;
-            if (selectedCount > 0) {
-                deleteSelectedBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash me-1" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg> 删除选中 (${selectedCount})`;
-            } else {
-                deleteSelectedBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash me-1" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg> 删除选中`;
-            }
-        }
-
-        selectAllCheckbox.addEventListener('change', function() {
-            recordCheckboxes.forEach(cb => {
-                cb.checked = selectAllCheckbox.checked;
-            });
-            checkSelectedState();
-        });
-
-        recordCheckboxes.forEach(cb => {
-            cb.addEventListener('change', checkSelectedState);
-        });
-
-        function confirmBulkDelete() {
-            const selectedCheckboxes = Array.from(recordCheckboxes).filter(cb => cb.checked);
-            const selectedCount = selectedCheckboxes.length;
-
-            if (selectedCount === 0) {
-                alert("请先选择要删除的记录。");
-                return false;
-            }
-
-            const confirmation = confirm(`确定要删除选中的 ${selectedCount} 条 DNS 记录吗？此操作不可恢复！`);
-            if (confirmation) {
-                bulkDeleteForm.querySelectorAll('input[name="record_ids"]').forEach(input => input.remove());
-                selectedCheckboxes.forEach(cb => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'record_ids';
-                    input.value = cb.value;
-                    bulkDeleteForm.appendChild(input);
-                });
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', checkSelectedState);
-    </script>
-
-    {# --- Pagination --- #}
-    {% if pagination.pages > 1 %}
-    <nav aria-label="DNS Record Pagination" class="mt-4">
-      <ul class="pagination justify-content-center">
-        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id, page=pagination.prev_num, q=search_query, type=filter_type) if pagination.has_prev else '#' }}">上一页</a>
-        </li>
-        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-          {% if p %}
-            <li class="page-item {% if p == pagination.page %}active{% endif %}">
-              <a class="page-link" href="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id, page=p, q=search_query, type=filter_type) }}">{{ p }}</a>
-            </li>
-          {% else %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-          {% endif %}
-        {% endfor %}
-        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id, page=pagination.next_num, q=search_query, type=filter_type) if pagination.has_next else '#' }}">下一页</a>
-        </li>
-      </ul>
-    </nav>
-    <p class="text-center text-muted small">
-      第 {{ pagination.page }} 页 / 共 {{ pagination.pages }} 页
-    </p>
+    <span class="visually-hidden" id="copy-status" role="status"></span>
+    {% elif search_query or filter_type %}
+    <div class="workbench-empty">
+      <h3>没有符合筛选条件的记录</h3>
+      <a href="{{ url_for('dns.manage_dns_records', domain_id=domain.id) }}" class="btn btn-outline-secondary">清除筛选</a>
+    </div>
+    {% else %}
+    <div class="workbench-empty">
+      <h3>本地暂无记录</h3>
+      <p>点击「刷新记录」从服务商读取，也可以添加一条新记录。</p>
+    </div>
     {% endif %}
 
-  {% elif search_query or filter_type %}
-    {# 搜索无结果 #}
-    <div class="alert alert-info mt-4">
-      <h5 class="alert-heading">未找到匹配的记录</h5>
-      <p class="mb-0">
-        当前筛选条件：
-        {% if filter_type %}<span class="badge bg-secondary me-1">类型: {{ filter_type }}</span>{% endif %}
-        {% if search_query %}<span class="badge bg-secondary">关键词: "{{ search_query }}"</span>{% endif %}
-      </p>
-      <hr>
-      <a href="{{ url_for('dns.manage_dns_records', zone_id=domain.zone_id) }}" class="btn btn-outline-primary btn-sm">清除筛选条件</a>
-    </div>
-  {% else %}
-    <p class="text-muted mt-4">未能找到此域名的 DNS 记录。</p>
-  {% endif %}
+    {% if pagination and pagination.pages > 1 %}
+    <nav class="record-pages" aria-label="DNS 记录分页">
+      <span class="list-summary">第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+      <div class="workbench-actions">
+        {% if pagination.has_prev %}
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dns.manage_dns_records', domain_id=domain.id, page=pagination.prev_num, q=search_query, type=filter_type) }}">上一页</a>
+        {% endif %}
+        {% for page_number in pagination.iter_pages(left_edge=1, left_current=1, right_current=1, right_edge=1) %}
+          {% if not page_number %}
+          <span class="list-summary" aria-hidden="true">…</span>
+          {% elif page_number == pagination.page %}
+          <span class="page-current" aria-current="page">{{ page_number }}</span>
+          {% else %}
+          <a class="btn btn-sm btn-outline-secondary page-number"
+             href="{{ url_for('dns.manage_dns_records', domain_id=domain.id, page=page_number, q=search_query, type=filter_type) }}"
+             aria-label="第 {{ page_number }} 页">{{ page_number }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('dns.manage_dns_records', domain_id=domain.id, page=pagination.next_num, q=search_query, type=filter_type) }}">下一页</a>
+        {% endif %}
+      </div>
+    </nav>
+    {% endif %}
+  </section>
 
-  <div class="d-flex gap-2 mt-3">
-    <a href="{{ url_for('dns.view_domains', token_id=token.id) }}" class="btn btn-secondary">返回域名列表</a>
-    <button type="button" class="btn btn-outline-primary" onclick="exportDnsRecords()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16">
-        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-      </svg>
-      导出 DNS 记录
-    </button>
-  </div>
-
+  <details class="page-details">
+    <summary>域名信息</summary>
+    <dl><dt>Zone ID</dt><dd><code class="record-text">{{ domain.zone_id }}</code></dd></dl>
+  </details>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// 复制记录内容
-function copyRecordContent(content, btn) {
-  navigator.clipboard.writeText(content).then(function() {
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>';
-    btn.classList.remove('btn-outline-primary');
-    btn.classList.add('btn-success');
-    setTimeout(function() {
-      btn.innerHTML = originalHtml;
-      btn.classList.remove('btn-success');
-      btn.classList.add('btn-outline-primary');
-    }, 1500);
-  }).catch(function(err) {
-    console.error('复制失败:', err);
-    alert('复制失败');
+  const recordType = document.getElementById('record_type');
+  const priorityField = document.getElementById('priority-field');
+  recordType.addEventListener('change', () => {
+    priorityField.hidden = !['MX', 'SRV'].includes(recordType.value);
   });
-}
+  const recordEditor = document.getElementById('record-editor');
+  recordEditor.addEventListener('shown.bs.collapse', () => recordType.focus());
+  recordEditor.addEventListener('hidden.bs.collapse', () => {
+    document.querySelector('button[aria-controls="record-editor"]').focus();
+  });
 
-// 导出 DNS 记录为 JSON
-function exportDnsRecords() {
-  const records = [
-    {% for record in records %}
-    {
-      type: "{{ record.type }}",
-      name: "{{ record.name }}",
-      content: "{{ record.content | e }}",
-      ttl: {{ record.ttl }},
-      {% if supports_proxy %}proxied: {{ 'true' if record.proxied else 'false' }},{% endif %}
-      priority: {{ record.priority if record.priority else 'null' }}
-    },
-    {% endfor %}
-  ];
-  
-  const exportData = {
-    domain: "{{ domain.name }}",
-    zone_id: "{{ domain.zone_id }}",
-    exported_at: new Date().toISOString(),
-    total_records: records.length,
-    records: records
-  };
-  
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '{{ domain.name }}_dns_records.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+  {% if records %}
+  const selection = document.getElementById('bulk-delete-form');
+  const selectAll = document.getElementById('select-all-checkbox');
+  const checkboxes = Array.from(document.querySelectorAll('.record-checkbox'));
+  const selectedCount = document.getElementById('selected-count');
+
+  function updateSelection() {
+    const count = checkboxes.filter(checkbox => checkbox.checked).length;
+    selectAll.checked = count === checkboxes.length;
+    selectAll.indeterminate = count > 0 && count < checkboxes.length;
+    selection.hidden = count === 0;
+    selectedCount.textContent = '当前页已选 ' + count + ' 条';
+    return count;
+  }
+
+  selectAll.addEventListener('change', () => {
+    checkboxes.forEach(checkbox => { checkbox.checked = selectAll.checked; });
+    updateSelection();
+  });
+  checkboxes.forEach(checkbox => checkbox.addEventListener('change', updateSelection));
+  selection.addEventListener('reset', () => requestAnimationFrame(updateSelection));
+  selection.addEventListener('submit', event => {
+    const count = updateSelection();
+    if (!count || !confirm('确定删除当前页选中的 ' + count + ' 条 DNS 记录？此操作不可恢复。')) event.preventDefault();
+  });
+  updateSelection();
+  window.addEventListener('pageshow', updateSelection);
+
+  document.querySelectorAll('[data-delete-record]').forEach(form => {
+    form.addEventListener('submit', event => {
+      if (!confirm('确定删除记录 ' + form.dataset.deleteRecord + '？此操作不可恢复。')) event.preventDefault();
+    });
+  });
+
+  document.querySelectorAll('[data-copy]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const value = JSON.parse(button.dataset.copy);
+      try {
+        await navigator.clipboard.writeText(value);
+        document.getElementById('copy-status').textContent = '已复制记录内容';
+        button.textContent = '已复制';
+        setTimeout(() => { button.textContent = '复制'; }, 1600);
+      } catch {
+        window.prompt('复制这条记录的内容', value);
+      }
+    });
+  });
+
+  document.getElementById('export-records').addEventListener('click', () => {
+    const records = [
+      {% for record in records %}
+      {
+        type: {{ record.type | tojson }},
+        name: {{ record.name | tojson }},
+        content: {{ record.content | tojson }},
+        ttl: {{ record.ttl | tojson }},
+        {% if supports_proxy %}proxied: {{ record.proxied | tojson }},{% endif %}
+        priority: {{ record.priority | tojson }}
+      },
+      {% endfor %}
+    ];
+    const payload = {
+      domain: {{ domain.name | tojson }},
+      zone_id: {{ domain.zone_id | tojson }},
+      exported_at: new Date().toISOString(),
+      total_records: records.length,
+      records: records
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = payload.domain + '_dns_records.json';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  });
+  {% endif %}
 </script>
 {% endblock %}

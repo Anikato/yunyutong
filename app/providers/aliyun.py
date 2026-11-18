@@ -99,7 +99,7 @@ class AliyunProvider(DNSProvider):
         """获取所有域名列表"""
         if not ALIYUN_SDK_AVAILABLE:
             logger.error("阿里云 DNS SDK 未安装")
-            return []
+            raise RuntimeError("阿里云 DNS SDK 未安装")
         
         zones = []
         page = 1
@@ -135,12 +135,10 @@ class AliyunProvider(DNSProvider):
                         break
                     page += 1
                 else:
-                    logger.error(f"获取阿里云域名列表失败")
-                    return []
+                    raise RuntimeError("获取阿里云域名列表失败")
                     
         except Exception as e:
-            logger.exception(f"获取阿里云域名列表异常: {e}")
-            return []
+            raise RuntimeError("获取阿里云域名列表失败") from e
         
         return zones
     
@@ -148,7 +146,7 @@ class AliyunProvider(DNSProvider):
         """获取指定域名的 DNS 记录"""
         if not ALIYUN_SDK_AVAILABLE:
             logger.error("阿里云 DNS SDK 未安装")
-            return []
+            raise RuntimeError("阿里云 DNS SDK 未安装")
         
         records = []
         page = 1
@@ -169,11 +167,11 @@ class AliyunProvider(DNSProvider):
                 if response.status_code == 200:
                     body = response.body
                     domain_records = body.domain_records.record if body.domain_records else []
+                    total = body.total_count
+                    if total is None or (not domain_records and len(records) < total):
+                        raise RuntimeError("阿里云 DNS 记录分页不完整")
                     
-                    if not domain_records:
-                        break
-                    
-                    for record in domain_records:
+                    for record in domain_records or []:
                         # 转换为统一格式
                         full_name = f"{record.rr}.{zone_id}" if record.rr != '@' else zone_id
                         records.append({
@@ -189,17 +187,14 @@ class AliyunProvider(DNSProvider):
                             'status': record.status if hasattr(record, 'status') else 'ENABLE',
                         })
                     
-                    total = body.total_count or 0
-                    if page * page_size >= total:
+                    if len(records) >= total:
                         break
                     page += 1
                 else:
-                    logger.error(f"获取阿里云 DNS 记录失败")
-                    return []
+                    raise RuntimeError("获取阿里云 DNS 记录失败")
                     
         except Exception as e:
-            logger.exception(f"获取阿里云 DNS 记录异常: {e}")
-            return []
+            raise RuntimeError("获取阿里云 DNS 记录失败") from e
         
         return records
     

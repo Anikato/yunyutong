@@ -1,4 +1,5 @@
 from flask import Flask
+from sqlalchemy import event
 from config import Config
 from app.extensions import db, login_manager
 from app.models import User
@@ -13,6 +14,12 @@ def create_app(config_class=Config):
     # 初始化扩展
     db.init_app(app)
     login_manager.init_app(app)
+
+    with app.app_context():
+        if db.engine.dialect.name == 'sqlite':
+            @event.listens_for(db.engine, 'connect')
+            def enable_foreign_keys(connection, _):
+                connection.execute('PRAGMA foreign_keys=ON')
 
     @login_manager.user_loader
     def load_user(user_id):

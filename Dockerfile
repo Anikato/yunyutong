@@ -1,5 +1,5 @@
 # ── 构建阶段 ─────────────────────────────────────────────────
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt \
-    && pip install --no-cache-dir --prefix=/install gunicorn
+    && pip install --no-cache-dir --prefix=/install gunicorn==27.0.1
 
 
 # ── 运行阶段 ─────────────────────────────────────────────────
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 LABEL org.opencontainers.image.title="云域通 YunYuTong" \
       org.opencontainers.image.description="多平台 DNS 域名管理工具" \
@@ -43,8 +43,10 @@ ENV DATABASE_URL=sqlite:////app/data/yunyutong.db \
     FLASK_DEBUG=0
 
 EXPOSE 5000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
+    CMD ["python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:5000/login', timeout=3).close()"]
 
 # 使用 gunicorn 启动，workers 数量可通过环境变量覆盖
 ENV GUNICORN_WORKERS=2
 
-CMD ["sh", "-c", "gunicorn --workers ${GUNICORN_WORKERS} --bind 0.0.0.0:5000 --timeout 120 --access-logfile - --error-logfile - run:app"]
+CMD ["sh", "-c", "python migrate_db.py && exec gunicorn --workers ${GUNICORN_WORKERS} --bind 0.0.0.0:5000 --timeout 120 --access-logfile - --error-logfile - run:app"]
